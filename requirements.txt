@@ -1,0 +1,4 @@
+customtkinter
+pydantic
+sqlalchemy
+pillow
