@@ -1,14 +1,13 @@
 # GYMNight 🌙💪
 
-GYMNight is a modern, high-performance fitness management application built with Python. Designed with a sleek "Dark Mode" aesthetic, it provides a seamless graphical experience for users to track their physical evolution, nutrition, and workout routines.
+O **GYMNight** é um aplicativo desktop moderno para gestão de treinos e acompanhamento físico. Com foco em uma interface elegante e alta performance, ele permite que os usuários abandonem as planilhas complexas e tenham controle total sobre sua evolução física de forma visual e intuitiva.
 
-## 🎯 Project Vision
-- **Science Fair Highlight:** A fully functional desktop application with a professional look and feel.
-- **Commercial Ready:** Built with a modular architecture, making it ready for future monetization and portfolio showcase.
-- **User-Centric Design:** Focuses on an intuitive "button-and-click" interface, moving away from complex terminal commands.
+## 🎯 Visão do Projeto
+- **Destaque Acadêmico:** Desenvolvido para demonstrar a aplicação prática de Engenharia de Software, utilizando arquitetura modular e persistência de dados local.
+- **Foco na Experiência do Usuário:** Interface gráfica projetada para ser simples, livre de distrações e otimizada para uso diário.
+- **Privacidade e Performance:** O banco de dados roda localmente na máquina do usuário, garantindo respostas em milissegundos e total privacidade dos dados.
 
-## ✨ Key Features
-- **Personal Dashboard:** Real-time visualization of health metrics (BMI, Body Fat, Daily Calories).
-- **Interactive Workout Planner:** Create and manage routines with a modern, visual interface.
-- **Progress Tracking:** Interactive charts showing your weight and strength gains over time.
-- **Nutrition Hub:** Database integration to manage daily macros and hydration.
+## ✨ Funcionalidades Principais
+- **Dashboard de Saúde:** Visualização rápida de métricas como IMC e gasto calórico diário estimado.
+- **Gestão de Treinos:** Criação de rotinas personalizadas, registrando exercícios, séries, repetições e cargas.
+- **Validação Inteligente:** O sistema impede a entrada de dados irreais (como pesos negativos) usando validação rigorosa nos bastidores.
