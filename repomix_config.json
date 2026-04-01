@@ -1,0 +1,16 @@
+{
+  "output": {
+    "filePath": "repomix-output.txt"
+  },
+  "ignore": {
+    "customPatterns": [
+      "*.db",
+      "*.sqlite",
+      "*.sqlite3",
+      "__pycache__",
+      "*.pyc",
+      "venv/",
+      ".env"
+    ]
+  }
+}
