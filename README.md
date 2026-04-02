@@ -1,11 +1,26 @@
-# GYMNight 🌙💪
+# GYMNight 🏋️‍♂️🌙
 
-O **GYMNight** é um aplicativo desktop moderno para gestão de treinos e acompanhamento físico. Com foco em uma interface elegante e alta performance, ele permite que os usuários abandonem as planilhas complexas e tenham controle total sobre sua evolução física de forma visual e intuitiva.
+**GYMNight** is a specialized workout management application built with Python and SQL. It is designed for bodybuilders and fitness enthusiasts who want to track their progress with precision while minimizing smartphone distractions during training sessions.
 
-## 🎯 Visão do Projeto
-- **Destaque Acadêmico:** Desenvolvido para demonstrar a aplicação prática de Engenharia de Software, utilizando arquitetura modular e persistência de dados local.
-- **Foco na Experiência do Usuário:** Interface gráfica projetada para ser simples, livre de distrações e otimizada para uso diário.
-- **Privacidade e Performance:** O banco de dados roda localmente na máquina do usuário, garantindo respostas em milissegundos e total privacidade dos dados.
+## 🎯 The Problem
+Most fitness apps are cluttered with social features and complex interfaces that lead to "phone scrolling" between sets. **GYMNight** aims to be a "background script" for your workout: fast, efficient, and data-oriented.
+
+## ✨ Key Features (MVP)
+* **Custom Routine Templates:** Create and manage workout splits (Push/Pull/Legs, Upper/Lower, etc.).
+* **Volume & Intensity Tracking:** Log sets, reps, and weight with minimal friction.
+* **Volume Analysis:** (In development) Automated calculation of weekly volume per muscle group.
+* **Database Driven:** Robust data persistence using SQL for historical progress tracking.
+
+## 🛠️ Tech Stack
+* **Language:** Python 3.12
+* **Database:** SQL (SQLite)
+* **Architecture:** Focused on clean logic and efficient data relationships.
+
+## 🚀 Getting Started
+
+### Prerequisites
+* Python 3.12 or higher installed.
+* A SQL environment (SQLite is used by default for local development).
 
 ## ✨ Funcionalidades Principais
 - **Dashboard de Saúde:** Visualização rápida de métricas como IMC e gasto calórico diário estimado.
