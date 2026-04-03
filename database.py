@@ -27,12 +27,33 @@ CREATE TABLE IF NOT EXISTS exercises (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_exercises_canonical ON exercises(canonical_name);
 CREATE INDEX        IF NOT EXISTS idx_exercises_muscle    ON exercises(muscle_group_id);
 
-CREATE TABLE IF NOT EXISTS workout_sessions (
+-- Rotinas (templates de treino)
+CREATE TABLE IF NOT EXISTS routines (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    started_at INTEGER NOT NULL DEFAULT (unixepoch()),
-    notes      TEXT
+    name       TEXT    NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
+-- Exercícios de uma rotina, com ordem definida
+CREATE TABLE IF NOT EXISTS routine_exercises (
+    routine_id  INTEGER NOT NULL REFERENCES routines(id) ON DELETE CASCADE,
+    exercise_id INTEGER NOT NULL REFERENCES exercises(id),
+    order_index INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (routine_id, exercise_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_routine_exercises_routine ON routine_exercises(routine_id, order_index);
+
+-- Sessões de treino (agrupa séries de um mesmo treino)
+CREATE TABLE IF NOT EXISTS workout_sessions (
+    id               INTEGER PRIMARY KEY AUTOINCREMENT,
+    started_at       INTEGER NOT NULL DEFAULT (unixepoch()),
+    routine_id       INTEGER REFERENCES routines(id),   -- opcional: sessão baseada em rotina
+    duration_seconds INTEGER,                           -- preenchido ao encerrar a sessão
+    notes            TEXT
+);
+
+-- Log atômico: cada linha = uma série
 CREATE TABLE IF NOT EXISTS workout_logs (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     exercise_id INTEGER NOT NULL REFERENCES exercises(id),
@@ -42,9 +63,11 @@ CREATE TABLE IF NOT EXISTS workout_logs (
     timestamp   INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
+-- Índices críticos para queries de agregação temporal
 CREATE INDEX IF NOT EXISTS idx_logs_exercise_time ON workout_logs(exercise_id, timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_logs_session       ON workout_logs(session_id);
 
+-- View: volume por sessão por exercício (base do SMA)
 CREATE VIEW IF NOT EXISTS session_volume AS
 SELECT
     exercise_id,
@@ -102,6 +125,11 @@ class DatabaseConnection:
         with self._conn:
             cur = self._conn.execute(sql, params)
             return cur.lastrowid
+
+    def execute_many(self, sql: str, params_list: list[tuple]) -> None:
+        """Executa múltiplas escritas em uma única transação."""
+        with self._conn:
+            self._conn.executemany(sql, params_list)
 
     def fetchall(self, sql: str, params: tuple = ()) -> list[sqlite3.Row]:
         return self._conn.execute(sql, params).fetchall()

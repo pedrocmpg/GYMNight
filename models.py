@@ -1,6 +1,6 @@
 """
 models.py - GYMNight Performance Engine
-ExerciseModel (read-only, thread-safe) + WorkoutEntryModel (editable, validado).
+ExerciseModel (read-only, thread-safe) + WorkoutEntryModel (editable, validado, pré-populado).
 """
 
 from __future__ import annotations
@@ -18,7 +18,15 @@ from PySide6.QtCore import (
 from PySide6.QtGui import QIcon
 
 from database import DatabaseConnection
-from engine import Exercise, PerformanceResult, WorkoutSet
+from engine import Exercise, LastPerformance, PerformanceAnalyzer, PerformanceResult
+
+
+# ---------------------------------------------------------------------------
+# Custom Role
+# ---------------------------------------------------------------------------
+
+# Role para retornar o Ghost Value (sugestão de peso/reps da última sessão)
+SuggestionRole = Qt.UserRole + 1
 
 
 # ---------------------------------------------------------------------------
@@ -47,7 +55,7 @@ class ExerciseModel(QAbstractTableModel):
     Modelo read-only para listagem e seleção de exercícios.
 
     Roles:
-      Qt.DisplayRole    → canonical_name
+      Qt.DisplayRole    → canonical_name / muscle_group_name
       Qt.DecorationRole → QIcon do grupo muscular
       Qt.UserRole       → Exercise dataclass completo
 
@@ -75,9 +83,7 @@ class ExerciseModel(QAbstractTableModel):
             return len(self._data)
 
     def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:
-        if parent.isValid():
-            return 0
-        return EX_COLUMNS
+        return 0 if parent.isValid() else EX_COLUMNS
 
     def data(self, index: QModelIndex, role: int = Qt.DisplayRole) -> Any:
         if not index.isValid():
@@ -154,10 +160,7 @@ class ExerciseModel(QAbstractTableModel):
         self.endResetModel()
 
     def add_exercise(self, exercise: Exercise) -> None:
-        """
-        Insere um exercício no modelo sem recarregar tudo do banco.
-        Usa beginInsertRows/endInsertRows para atualização granular.
-        """
+        """Insere exercício no modelo com beginInsertRows/endInsertRows granular."""
         with QMutexLocker(self._mutex):
             insert_pos = len(self._data)
 
@@ -201,7 +204,7 @@ class ExerciseModel(QAbstractTableModel):
 
 
 # ---------------------------------------------------------------------------
-# WorkoutEntryModel – Editable, com validação de tipos
+# WorkoutEntryModel – Editable, pré-populado, com SuggestionRole
 # ---------------------------------------------------------------------------
 
 class WorkoutEntryModel(QAbstractTableModel):
@@ -210,9 +213,11 @@ class WorkoutEntryModel(QAbstractTableModel):
 
     Colunas: exercise_id | weight_kg (float) | reps (int) | set_number (int)
 
-    Validação antes de commit:
-      - weight_kg: float > 0, máximo 999.9
-      - reps:      int >= 1, máximo 999
+    Funcionalidades:
+      - Pré-populado via lista de exercícios de uma rotina no __init__
+      - SuggestionRole: retorna LastPerformance como Ghost Value para a UI
+      - Validação estrita antes de commit (float/int)
+      - Thread-safe no commit via transações do DatabaseConnection
 
     Propriedades garantidas:
       P5: setData retorna False para tipos inválidos
@@ -224,11 +229,37 @@ class WorkoutEntryModel(QAbstractTableModel):
 
     HEADERS = ("Exercício ID", "Peso (kg)", "Reps", "Série")
 
-    def __init__(self, db: DatabaseConnection, session_id: int, parent=None) -> None:
+    def __init__(
+        self,
+        db: DatabaseConnection,
+        session_id: int,
+        analyzer: PerformanceAnalyzer | None = None,
+        exercises: list[Exercise] | None = None,  # pré-popula a partir de uma rotina
+        parent=None,
+    ) -> None:
         super().__init__(parent)
         self._db = db
         self._session_id = session_id
-        self._rows: list[dict] = []  # lista de dicts com dados pendentes
+        self._analyzer = analyzer
+        self._rows: list[dict] = []
+        self._suggestion_cache: dict[int, LastPerformance | None] = {}
+
+        # Pré-popula linhas se uma lista de exercícios foi fornecida (rotina)
+        if exercises:
+            self._prepopulate(exercises)
+
+    def _prepopulate(self, exercises: list[Exercise]) -> None:
+        """Cria uma linha por exercício da rotina, com set_number = 1."""
+        self.beginInsertRows(QModelIndex(), 0, len(exercises) - 1)
+        for idx, exercise in enumerate(exercises):
+            self._rows.append({
+                "exercise_id": exercise.id,
+                "exercise_name": exercise.canonical_name,
+                "weight_kg":   None,
+                "reps":        None,
+                "set_number":  1,
+            })
+        self.endInsertRows()
 
     # ------------------------------------------------------------------
     # QAbstractTableModel interface
@@ -249,7 +280,7 @@ class WorkoutEntryModel(QAbstractTableModel):
         if role in (Qt.DisplayRole, Qt.EditRole):
             col = index.column()
             if col == COL_EXERCISE:
-                return row.get("exercise_id")
+                return row.get("exercise_name") or row.get("exercise_id")
             if col == COL_WEIGHT:
                 return row.get("weight_kg")
             if col == COL_REPS:
@@ -259,6 +290,19 @@ class WorkoutEntryModel(QAbstractTableModel):
 
         if role == Qt.UserRole:
             return row
+
+        # SuggestionRole: retorna LastPerformance para exibição como texto cinza
+        if role == SuggestionRole:
+            exercise_id = row.get("exercise_id")
+            if exercise_id is None:
+                return None
+            if exercise_id not in self._suggestion_cache:
+                self._suggestion_cache[exercise_id] = (
+                    self._analyzer.get_last_performance(exercise_id)
+                    if self._analyzer
+                    else None
+                )
+            return self._suggestion_cache[exercise_id]
 
         return None
 
@@ -276,7 +320,6 @@ class WorkoutEntryModel(QAbstractTableModel):
         if not index.isValid():
             return Qt.NoItemFlags
         base = Qt.ItemIsEnabled | Qt.ItemIsSelectable
-        # exercise_id e set_number não são editáveis diretamente pelo usuário
         if index.column() in (COL_WEIGHT, COL_REPS):
             return base | Qt.ItemIsEditable
         return base
@@ -322,28 +365,31 @@ class WorkoutEntryModel(QAbstractTableModel):
     def insertRow(self, row: int, parent: QModelIndex = QModelIndex()) -> bool:
         self.beginInsertRows(parent, row, row)
         self._rows.insert(row, {
-            "exercise_id": None,
-            "weight_kg":   None,
-            "reps":        None,
-            "set_number":  len(self._rows) + 1,
+            "exercise_id":   None,
+            "exercise_name": None,
+            "weight_kg":     None,
+            "reps":          None,
+            "set_number":    len(self._rows) + 1,
         })
         self.endInsertRows()
         return True
 
-    def set_exercise(self, row: int, exercise_id: int) -> None:
-        """Define o exercício de uma linha (não editável via delegate)."""
+    def set_exercise(self, row: int, exercise: Exercise) -> None:
+        """Define o exercício de uma linha e invalida o cache de sugestão."""
         if 0 <= row < len(self._rows):
-            self._rows[row]["exercise_id"] = exercise_id
+            self._rows[row]["exercise_id"]   = exercise.id
+            self._rows[row]["exercise_name"] = exercise.canonical_name
+            # Invalida cache para forçar nova busca do ghost value
+            self._suggestion_cache.pop(exercise.id, None)
+            idx = self.index(row, COL_EXERCISE)
+            self.dataChanged.emit(idx, idx, [Qt.DisplayRole, SuggestionRole])
 
     # ------------------------------------------------------------------
     # Validação
     # ------------------------------------------------------------------
 
     def _validate_weight(self, value: Any) -> float | None:
-        """
-        Converte para float. Retorna None se inválido.
-        Regras: float > 0, máximo 999.9
-        """
+        """float > 0, máximo 999.9. Retorna None se inválido."""
         try:
             v = float(value)
         except (TypeError, ValueError):
@@ -353,12 +399,8 @@ class WorkoutEntryModel(QAbstractTableModel):
         return round(v, 2)
 
     def _validate_reps(self, value: Any) -> int | None:
-        """
-        Converte para int. Retorna None se inválido.
-        Regras: int >= 1, máximo 999. Rejeita floats não-inteiros (ex: 3.7).
-        """
+        """int >= 1, máximo 999. Rejeita floats não-inteiros (ex: 3.7). [P5]"""
         try:
-            # Rejeita strings com ponto decimal que não sejam .0
             if isinstance(value, str) and "." in value:
                 f = float(value)
                 if f != int(f):
@@ -391,10 +433,7 @@ class WorkoutEntryModel(QAbstractTableModel):
         r = self._rows[row]
         try:
             self._db.execute_write(
-                """
-                INSERT INTO workout_logs (exercise_id, session_id, weight_kg, reps)
-                VALUES (?, ?, ?, ?)
-                """,
+                "INSERT INTO workout_logs (exercise_id, session_id, weight_kg, reps) VALUES (?, ?, ?, ?)",
                 (r["exercise_id"], self._session_id, r["weight_kg"], r["reps"]),
             )
             self.set_committed.emit(r["exercise_id"], self._session_id)
