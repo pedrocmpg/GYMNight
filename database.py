@@ -48,15 +48,17 @@ CREATE INDEX IF NOT EXISTS idx_muscle_map_muscle   ON exercise_muscle_map(muscle
 
 -- Rotinas (templates de treino)
 CREATE TABLE IF NOT EXISTS routines (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    name       TEXT    NOT NULL,
-    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT    NOT NULL,
+    description TEXT    NOT NULL DEFAULT '',
+    created_at  INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
 CREATE TABLE IF NOT EXISTS routine_exercises (
-    routine_id  INTEGER NOT NULL REFERENCES routines(id)  ON DELETE CASCADE,
-    exercise_id INTEGER NOT NULL REFERENCES exercises(id),
-    order_index INTEGER NOT NULL DEFAULT 0,
+    routine_id   INTEGER NOT NULL REFERENCES routines(id)  ON DELETE CASCADE,
+    exercise_id  INTEGER NOT NULL REFERENCES exercises(id),
+    order_index  INTEGER NOT NULL DEFAULT 0,
+    default_sets INTEGER NOT NULL DEFAULT 3,
     PRIMARY KEY (routine_id, exercise_id)
 );
 
@@ -72,12 +74,14 @@ CREATE TABLE IF NOT EXISTS workout_sessions (
 );
 
 -- Log atômico: cada linha = uma série
+-- set_type: 'N' Normal | 'W' Aquecimento | 'D' Dropset | 'F' Falha
 CREATE TABLE IF NOT EXISTS workout_logs (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     exercise_id INTEGER NOT NULL REFERENCES exercises(id),
     session_id  INTEGER NOT NULL REFERENCES workout_sessions(id),
     weight_kg   REAL    NOT NULL CHECK(weight_kg > 0),
     reps        INTEGER NOT NULL CHECK(reps >= 1),
+    set_type    TEXT    NOT NULL DEFAULT 'N' CHECK(set_type IN ('N','W','D','F')),
     timestamp   INTEGER NOT NULL DEFAULT (unixepoch())
 );
 
@@ -85,7 +89,7 @@ CREATE INDEX IF NOT EXISTS idx_logs_exercise_time ON workout_logs(exercise_id, t
 CREATE INDEX IF NOT EXISTS idx_logs_session       ON workout_logs(session_id);
 
 -- View: volume PROPORCIONAL por músculo, por sessão
--- Volume muscular = peso * reps * contribution
+-- Séries de Aquecimento (set_type='W') são EXCLUÍDAS — não contaminam a métrica de hipertrofia
 CREATE VIEW IF NOT EXISTS session_muscle_volume AS
 SELECT
     wl.session_id,
@@ -95,9 +99,10 @@ SELECT
     MIN(wl.timestamp)                               AS session_ts
 FROM workout_logs wl
 JOIN exercise_muscle_map emm ON wl.exercise_id = emm.exercise_id
+WHERE wl.set_type != 'W'
 GROUP BY wl.session_id, wl.exercise_id, emm.muscle_group_id;
 
--- View: volume bruto por exercício por sessão (mantida para SMA geral)
+-- View: volume bruto por exercício por sessão (exclui aquecimento)
 CREATE VIEW IF NOT EXISTS session_volume AS
 SELECT
     exercise_id,
@@ -105,6 +110,7 @@ SELECT
     SUM(weight_kg * reps) AS volume,
     MIN(timestamp)        AS session_ts
 FROM workout_logs
+WHERE set_type != 'W'
 GROUP BY exercise_id, session_id;
 """
 
@@ -244,6 +250,47 @@ class DatabaseConnection:
         with self._conn:
             self._conn.executescript(SCHEMA_SQL)
             self._conn.executescript(SEED_SQL)
+            self._migrate()
+
+    def _migrate(self) -> None:
+        """Migrações incrementais para bancos existentes."""
+        with self._conn:
+            # Adiciona set_type se não existir
+            cols = [r[1] for r in self._conn.execute("PRAGMA table_info(workout_logs)").fetchall()]
+            if "set_type" not in cols:
+                self._conn.execute("ALTER TABLE workout_logs ADD COLUMN set_type TEXT NOT NULL DEFAULT 'N'")
+
+            # Adiciona description em routines
+            cols_r = [r[1] for r in self._conn.execute("PRAGMA table_info(routines)").fetchall()]
+            if "description" not in cols_r:
+                self._conn.execute("ALTER TABLE routines ADD COLUMN description TEXT NOT NULL DEFAULT ''")
+
+            # Adiciona default_sets em routine_exercises
+            cols_re = [r[1] for r in self._conn.execute("PRAGMA table_info(routine_exercises)").fetchall()]
+            if "default_sets" not in cols_re:
+                self._conn.execute("ALTER TABLE routine_exercises ADD COLUMN default_sets INTEGER NOT NULL DEFAULT 3")
+
+            # Recria views para incluir filtro set_type != 'W'
+            self._conn.execute("DROP VIEW IF EXISTS session_muscle_volume")
+            self._conn.execute("DROP VIEW IF EXISTS session_volume")
+            self._conn.executescript("""
+CREATE VIEW session_muscle_volume AS
+SELECT wl.session_id, wl.exercise_id, emm.muscle_group_id,
+       SUM(wl.weight_kg * wl.reps * emm.contribution) AS muscle_volume,
+       MIN(wl.timestamp) AS session_ts
+FROM workout_logs wl
+JOIN exercise_muscle_map emm ON wl.exercise_id = emm.exercise_id
+WHERE wl.set_type != 'W'
+GROUP BY wl.session_id, wl.exercise_id, emm.muscle_group_id;
+
+CREATE VIEW session_volume AS
+SELECT exercise_id, session_id,
+       SUM(weight_kg * reps) AS volume,
+       MIN(timestamp) AS session_ts
+FROM workout_logs
+WHERE set_type != 'W'
+GROUP BY exercise_id, session_id;
+""")
 
     # ------------------------------------------------------------------
     # API pública
