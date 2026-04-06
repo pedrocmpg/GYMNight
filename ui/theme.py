@@ -7,8 +7,8 @@ Paleta de cores e QSS global do GYMNight.
 # Paleta
 # ---------------------------------------------------------------------------
 
-C_BG        = "#161616"
-C_SURFACE   = "#1e1e1e"
+C_BG        = "#242424"
+C_SURFACE   = "#242424"
 C_CARD      = "#242424"
 C_CARD2     = "#2a2a2a"
 C_BORDER    = "#383838"
