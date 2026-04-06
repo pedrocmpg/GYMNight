@@ -35,10 +35,9 @@ class DashboardTab(QWidget):
         hero = QFrame()
         hero.setFixedHeight(140)
         hero.setStyleSheet(f"""
-            background: qlineargradient(x1:0,y1:0,x2:1,y2:0,
-                stop:0 #0a1a0a, stop:0.5 #0d2010, stop:1 #0a0a0a);
+            background: {C_CARD};
             border-radius: 12px;
-            border: 1px solid {C_BORDER};
+            border: 1px solid #aaaaaa;
         """)
         hero_lay = QVBoxLayout(hero)
         hero_lay.setContentsMargins(24, 20, 24, 20)
@@ -56,8 +55,8 @@ class DashboardTab(QWidget):
         self._stat_treinos   = StatCard("⚡", "Treinos esta semana", "0", "Meta: 5")
         self._stat_volume    = StatCard("🎯", "Volume total", "0 kg", "kg levantados")
         self._stat_sequencia = StatCard("📈", "Sequência", "0", "dias seguidos")
-        self._stat_duracao   = StatCard("⏱", "Duração média", "0 min", "por treino")
-        for s in [self._stat_treinos, self._stat_volume, self._stat_sequencia, self._stat_duracao]:
+        self._stat_cardio    = StatCard("🏃", "Cardio esta semana", "0 min", "tempo total")
+        for s in [self._stat_treinos, self._stat_volume, self._stat_sequencia, self._stat_cardio]:
             stats_row.addWidget(s)
         lay.addLayout(stats_row)
 
@@ -98,12 +97,12 @@ class DashboardTab(QWidget):
     def on_workout_finished(self, payload: dict):
         """
         Slot conectado ao sinal finished do ActiveWorkoutScreen.
-        Atualiza o dashboard imediatamente sem reload completo.
-        payload: {session_id, volume_total, duration_seconds, routine_name}
+        Atualiza o dashboard imediatamente com dados de força e cardio.
+        payload: {session_id, volume_total, duration_seconds, routine_name,
+                  cardio_total_min, cardio_avg_pse, cardio_count}
         """
         if not payload:
             return
-        # Atualiza stats e lista de recentes reativamente
         self._refresh_stats()
         self._refresh_recent()
 
@@ -118,10 +117,12 @@ class DashboardTab(QWidget):
         self._stat_volume.set_value(f"{vol/1000:.1f}k" if vol >= 1000 else f"{vol:.0f}")
 
         row3 = self._db.fetchone(
-            "SELECT COALESCE(AVG(duration_seconds),0) AS d FROM workout_sessions WHERE duration_seconds IS NOT NULL"
+            "SELECT COALESCE(SUM(duration_min),0) AS t FROM cardio_logs cl "
+            "JOIN workout_sessions ws ON cl.session_id = ws.id "
+            "WHERE ws.started_at >= strftime('%s','now','-7 days')"
         )
-        avg_dur = int(row3["d"] if row3 else 0)
-        self._stat_duracao.set_value(f"{avg_dur//60} min")
+        cardio_min = int(row3["t"] if row3 else 0)
+        self._stat_cardio.set_value(f"{cardio_min} min")
 
     def _refresh_recent(self):
         # Limpa itens antigos (mantém cabeçalho + spacing = 2 itens)
@@ -146,7 +147,17 @@ class DashboardTab(QWidget):
                 when = "Hoje" if diff == 0 else "Ontem" if diff == 1 else f"{diff} dias atrás"
                 left = QVBoxLayout()
                 left.addWidget(label(row["rname"] or "Treino livre", "h3"))
-                left.addWidget(label(when, "sub"))
+
+                # Verifica se houve cardio nessa sessão
+                cardio_row = self._db.fetchone(
+                    "SELECT COALESCE(SUM(duration_min),0) AS total FROM cardio_logs WHERE session_id=?",
+                    (row["id"],),
+                )
+                cardio_min = int(cardio_row["total"]) if cardio_row else 0
+                sub_txt = when
+                if cardio_min > 0:
+                    sub_txt += f" · 🏃 {cardio_min} min cardio"
+                left.addWidget(label(sub_txt, "sub"))
                 item_lay.addLayout(left)
                 item_lay.addStretch()
                 dur = row["duration_seconds"] or 0

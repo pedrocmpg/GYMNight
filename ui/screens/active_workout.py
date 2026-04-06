@@ -1,14 +1,13 @@
 """
 ui/screens/active_workout.py
-Tela de Treino Ativo: tabs por exercício, card de séries com check verde.
+Tela de Treino Ativo: força + cardio, tabs por exercício, card de séries.
 """
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtWidgets import (
-    QComboBox, QFrame, QHBoxLayout, QLabel, QLineEdit,
-    QMessageBox, QPushButton, QScrollArea,
-    QVBoxLayout, QWidget,
+    QComboBox, QDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
+    QMessageBox, QPushButton, QScrollArea, QVBoxLayout, QWidget,
 )
 
 from database import DatabaseConnection
@@ -17,12 +16,13 @@ from ui.theme import (
     C_BORDER, C_CARD, C_CARD2, C_GREEN, C_GREEN_BG,
     C_TEXT, C_TEXT2, C_TEXT3, label, separator,
 )
-from ui.delegates import SetTypeDelegate
-from core.models import COL_SET_TYPE
+from ui.screens.cardio_widget import CardioPickerDialog, CardioRow
+from core.models import SET_TYPES
 
 
 class ActiveWorkoutScreen(QWidget):
-    # Emite dict com: session_id, volume_total, duration_seconds, routine_name
+    # Emite dict: session_id, volume_total, duration_seconds, routine_name,
+    #             cardio_total_min, cardio_avg_pse, cardio_count
     finished = Signal(dict)
 
     def __init__(self, db: DatabaseConnection, rm: RoutineManager,
@@ -36,10 +36,20 @@ class ActiveWorkoutScreen(QWidget):
         self._exercises: list[Exercise] = []
         self._current_idx = 0
         self._series_data: list[list[dict]] = []
+        self._cardio_rows: list[CardioRow] = []
         self._build()
 
     def _build(self):
-        lay = QVBoxLayout(self)
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+
+        # Scroll principal
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        content = QWidget()
+        lay = QVBoxLayout(content)
         lay.setContentsMargins(24, 16, 24, 16)
         lay.setSpacing(16)
 
@@ -82,7 +92,7 @@ class ActiveWorkoutScreen(QWidget):
         self._prog_fill.setFixedWidth(0)
         lay.addWidget(self._prog_bar)
 
-        # Tabs de exercícios
+        # Tabs de exercícios (scroll horizontal)
         self._tabs_scroll = QScrollArea()
         self._tabs_scroll.setFixedHeight(48)
         self._tabs_scroll.setWidgetResizable(True)
@@ -97,7 +107,7 @@ class ActiveWorkoutScreen(QWidget):
         self._tabs_scroll.setWidget(self._tabs_w)
         lay.addWidget(self._tabs_scroll)
 
-        # Card do exercício
+        # Card do exercício atual
         self._ex_card = QFrame()
         self._ex_card.setObjectName("card")
         ex_lay = QVBoxLayout(self._ex_card)
@@ -134,35 +144,119 @@ class ActiveWorkoutScreen(QWidget):
         self._series_container = QVBoxLayout()
         self._series_container.setSpacing(8)
         ex_lay.addLayout(self._series_container)
-
         lay.addWidget(self._ex_card)
-        lay.addStretch()
 
-        # Navegação
-        nav = QHBoxLayout()
+        # ── Seção de Cardio ──────────────────────────────────────────────
+        cardio_hdr = QHBoxLayout()
+        cardio_title = label("CARDIO", "h3")
+        cardio_hdr.addWidget(cardio_title)
+        cardio_hdr.addStretch()
+        add_cardio_btn = QPushButton("+ Cardio")
+        add_cardio_btn.setFixedHeight(34)
+        add_cardio_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent;
+                color: {C_GREEN};
+                border: 1px solid {C_GREEN};
+                border-radius: 8px;
+                padding: 0 14px;
+                font-weight: 700;
+                font-size: 12px;
+            }}
+            QPushButton:hover {{ background: {C_GREEN_BG}; }}
+        """)
+        add_cardio_btn.clicked.connect(self._add_cardio)
+        cardio_hdr.addWidget(add_cardio_btn)
+        lay.addLayout(cardio_hdr)
+
+        self._cardio_container = QVBoxLayout()
+        self._cardio_container.setSpacing(8)
+        lay.addLayout(self._cardio_container)
+
+        self._no_cardio_lbl = label("Nenhum cardio adicionado.", "sub")
+        self._no_cardio_lbl.setAlignment(Qt.AlignCenter)
+        lay.addWidget(self._no_cardio_lbl)
+
+        lay.addStretch()
+        scroll.setWidget(content)
+        root.addWidget(scroll)
+
+        # Navegação (fora do scroll, fixo no rodapé)
+        nav_w = QWidget()
+        nav_w.setStyleSheet(f"background:{C_CARD}; border-top:1px solid {C_BORDER};")
+        nav = QHBoxLayout(nav_w)
+        nav.setContentsMargins(24, 10, 24, 10)
+        nav.setSpacing(12)
+
         self._prev_btn = QPushButton("Anterior")
         self._prev_btn.setObjectName("ghost")
         self._prev_btn.setMinimumHeight(44)
         self._prev_btn.clicked.connect(self._prev)
+
         self._next_btn = QPushButton("Próximo")
         self._next_btn.setMinimumHeight(44)
         self._next_btn.clicked.connect(self._next)
+
         nav.addWidget(self._prev_btn, 1)
         nav.addWidget(self._next_btn, 2)
-        lay.addLayout(nav)
+        root.addWidget(nav_w)
 
     # ------------------------------------------------------------------
-    # Carregamento
+    # Cardio
+    # ------------------------------------------------------------------
+
+    def _add_cardio(self):
+        dlg = CardioPickerDialog(parent=self)
+        if dlg.exec() != QDialog.Accepted:
+            return
+        data = dlg.get_data()
+        if not data:
+            return
+        row = CardioRow(data, parent=None)
+        row.remove_requested.connect(self._remove_cardio)
+        self._cardio_rows.append(row)
+        self._cardio_container.addWidget(row)
+        self._no_cardio_lbl.setVisible(len(self._cardio_rows) == 0)
+
+    def _remove_cardio(self, row: CardioRow):
+        if row in self._cardio_rows:
+            self._cardio_rows.remove(row)
+        self._cardio_container.removeWidget(row)
+        row.deleteLater()
+        self._no_cardio_lbl.setVisible(len(self._cardio_rows) == 0)
+
+    def _save_cardio_logs(self):
+        """Persiste todos os registros de cardio no banco."""
+        if not self._session_id or not self._cardio_rows:
+            return
+        for row in self._cardio_rows:
+            d = row.get_data()
+            self._db.execute_write(
+                "INSERT INTO cardio_logs (session_id, cardio_type, duration_min, distance_km, pse) VALUES (?,?,?,?,?)",
+                (self._session_id, d["cardio_type"], d["duration_min"],
+                 d.get("distance_km"), d.get("pse")),
+            )
+
+    def _cardio_summary(self) -> dict:
+        total_min = sum(r.get_data()["duration_min"] for r in self._cardio_rows)
+        pse_vals  = [r.get_data()["pse"] for r in self._cardio_rows if r.get_data().get("pse")]
+        avg_pse   = round(sum(pse_vals) / len(pse_vals), 1) if pse_vals else 0
+        return {
+            "cardio_total_min": total_min,
+            "cardio_avg_pse":   avg_pse,
+            "cardio_count":     len(self._cardio_rows),
+        }
+
+    # ------------------------------------------------------------------
+    # Carregamento de rotina
     # ------------------------------------------------------------------
 
     def _populate_routine_combo(self):
-        """Preenche o QComboBox com as rotinas disponíveis."""
         self._routine_combo.clear()
         for r in self._rm.list_routines():
             self._routine_combo.addItem(r.name, userData=r)
 
     def _load_from_combo(self):
-        """Carrega a rotina selecionada no combo sem iniciar sessão nova."""
         routine = self._routine_combo.currentData()
         if routine is None:
             return
@@ -178,22 +272,33 @@ class ActiveWorkoutScreen(QWidget):
         self._show_exercise(0)
 
     def load_routine(self, routine: Routine, session_id: int):
-        self._session_id = session_id
-        self._exercises  = self._rm.get_routine_exercises(routine.id)
+        self._session_id  = session_id
+        self._exercises   = self._rm.get_routine_exercises(routine.id)
         self._current_idx = 0
+        self._cardio_rows = []
+        # Limpa cardio container
+        while self._cardio_container.count():
+            item = self._cardio_container.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        self._no_cardio_lbl.setVisible(True)
+
         self._title.setText(routine.name.upper())
         self._series_data = [
             [{"weight": "", "reps": "", "set_type": "N", "done": False} for _ in range(4)]
             for _ in self._exercises
         ]
         self._populate_routine_combo()
-        # Seleciona a rotina atual no combo
         for i in range(self._routine_combo.count()):
             if self._routine_combo.itemData(i).id == routine.id:
                 self._routine_combo.setCurrentIndex(i)
                 break
         self._build_tabs()
         self._show_exercise(0)
+
+    # ------------------------------------------------------------------
+    # Tabs e exercícios
+    # ------------------------------------------------------------------
 
     def _build_tabs(self):
         while self._tabs_lay.count() > 1:
@@ -246,6 +351,27 @@ class ActiveWorkoutScreen(QWidget):
 
         for s_idx, s in enumerate(series):
             row_w = QWidget()
+            row_w.setStyleSheet(f"""
+                QWidget {{ background: transparent; }}
+                QLineEdit {{
+                    background: {C_CARD2};
+                    color: {C_TEXT};
+                    border: 1px solid {C_BORDER};
+                    border-radius: 8px;
+                    padding: 6px 10px;
+                    font-size: 13px;
+                }}
+                QLineEdit:focus {{ border-color: {C_GREEN}; }}
+                QComboBox {{
+                    background: {C_CARD2};
+                    color: {C_TEXT2};
+                    border: 1px solid {C_BORDER};
+                    border-radius: 8px;
+                    padding: 4px 8px;
+                    font-size: 11px;
+                    font-weight: 600;
+                }}
+            """)
             row_lay = QHBoxLayout(row_w)
             row_lay.setContentsMargins(0, 0, 0, 0)
             row_lay.setSpacing(8)
@@ -266,12 +392,8 @@ class ActiveWorkoutScreen(QWidget):
             r_edit.textChanged.connect(lambda v, i=idx, j=s_idx: self._update(i, j, "reps", v))
             row_lay.addWidget(r_edit, 3)
 
-            # Dropdown de tipo de série
             type_combo = QComboBox()
             type_combo.setFixedHeight(34)
-            type_combo.setStyleSheet(f"background:{C_CARD}; color:#e0e0e0; border:1px solid {C_BORDER}; border-radius:6px; padding:2px 6px; font-size:11px; font-weight:600;")
-            _SET_TYPE_COLORS = {"N": "#9ca3af", "W": "#60a5fa", "D": "#f97316", "F": "#ef4444"}
-            from core.models import SET_TYPES
             for code, name in SET_TYPES:
                 type_combo.addItem(f"[{code}] {name}", userData=code)
             current_type = s.get("set_type", "N")
@@ -346,25 +468,41 @@ class ActiveWorkoutScreen(QWidget):
         else:
             self._finish()
 
+    # ------------------------------------------------------------------
+    # Finalização
+    # ------------------------------------------------------------------
+
     def _finish(self):
         if QMessageBox.question(self, "Finalizar", "Encerrar sessão?",
                                 QMessageBox.Yes | QMessageBox.No) != QMessageBox.Yes:
             return
+
+        # Salva cardio no banco
+        self._save_cardio_logs()
+
         duration = self._rm.end_session(self._session_id) if self._session_id else 0
         row = self._db.fetchone(
             "SELECT COALESCE(SUM(weight_kg*reps),0) AS v FROM workout_logs WHERE session_id=?",
             (self._session_id,),
         )
         vol = float(row["v"]) if row else 0.0
+        cardio = self._cardio_summary()
         mins, secs = divmod(duration, 60)
-        QMessageBox.information(self, "Treino Finalizado",
-            f"Volume Total: {vol:.0f} kg\nDuração: {mins:02d}:{secs:02d}")
+
+        # Resumo
+        summary = f"Treino de Força Concluído!\nVolume: {vol:.0f} kg · Duração: {mins:02d}:{secs:02d}"
+        if cardio["cardio_count"] > 0:
+            summary += f"\n\n🏃 {int(cardio['cardio_total_min'])} min de Cardio"
+            if cardio["cardio_avg_pse"]:
+                summary += f" · PSE médio: {cardio['cardio_avg_pse']}/10"
+        QMessageBox.information(self, "Treino Finalizado", summary)
 
         payload = {
             "session_id":       self._session_id,
             "volume_total":     vol,
             "duration_seconds": duration,
             "routine_name":     self._title.text(),
+            **cardio,
         }
         self._session_id = None
         self.finished.emit(payload)

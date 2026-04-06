@@ -112,6 +112,19 @@ SELECT
 FROM workout_logs
 WHERE set_type != 'W'
 GROUP BY exercise_id, session_id;
+
+-- Logs de cardio (métricas diferentes da musculação)
+CREATE TABLE IF NOT EXISTS cardio_logs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id  INTEGER NOT NULL REFERENCES workout_sessions(id),
+    cardio_type TEXT    NOT NULL,
+    duration_min REAL   NOT NULL CHECK(duration_min > 0),
+    distance_km  REAL,
+    pse          INTEGER CHECK(pse BETWEEN 1 AND 10),
+    timestamp   INTEGER NOT NULL DEFAULT (unixepoch())
+);
+
+CREATE INDEX IF NOT EXISTS idx_cardio_session ON cardio_logs(session_id);
 """
 
 SEED_SQL = """
