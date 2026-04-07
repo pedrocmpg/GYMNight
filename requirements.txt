@@ -1,5 +1,5 @@
 PySide6==6.6.1
-pillow==10.2.0
+pillow==12.1.1
 pydantic==2.6.1
 sqlalchemy==2.0.27
 loguru
