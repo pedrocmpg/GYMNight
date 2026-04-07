@@ -12,7 +12,7 @@ C_SURFACE   = "#242424"
 C_CARD      = "#242424"
 C_CARD2     = "#2a2a2a"
 C_BORDER    = "#383838"
-C_GREEN     = "#a3e635"
+C_GREEN     = "#a2ff00"
 C_GREEN_DK  = "#65a30d"
 C_GREEN_BG  = "#1a2e0a"
 C_TEXT      = "#ffffff"
@@ -136,8 +136,8 @@ QLabel#stat_lbl {{ font-size: 11px; color: {C_TEXT3}; }}
 
 QFrame#card {{
     background: {C_CARD};
-    border: 1px solid {C_BORDER};
-    border-radius: 12px;
+    border: 1px solid #555555;
+    border-radius: 14px;
 }}
 QFrame#sep {{
     background: {C_BORDER};
@@ -157,6 +157,12 @@ from PySide6.QtWidgets import QGraphicsDropShadowEffect
 def card(parent=None) -> QFrame:
     f = QFrame(parent)
     f.setObjectName("card")
+    # Sombra em todos os cards
+    eff = QGraphicsDropShadowEffect(f)
+    eff.setBlurRadius(24)
+    eff.setColor(QColor(0, 0, 0, 140))
+    eff.setOffset(0, 4)
+    f.setGraphicsEffect(eff)
     return f
 
 

@@ -6,6 +6,7 @@ from __future__ import annotations
 import datetime
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QPainter, QPixmap, QBrush
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QScrollArea,
     QVBoxLayout, QWidget,
@@ -14,6 +15,67 @@ from PySide6.QtWidgets import (
 from database import DatabaseConnection
 from ui.theme import C_BORDER, C_CARD, C_GREEN, C_TEXT, C_TEXT3, card, label, separator
 from ui.widgets import StatCard, WeekDayDot
+
+
+class _HeroBanner(QWidget):
+    """Widget com imagem de fundo, bordas arredondadas e sombra degradê."""
+
+    _IMG_PATH = "assets/images/FUNDO HEADER.png"
+    _RADIUS   = 16
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._pixmap = QPixmap(self._IMG_PATH)
+        # Sombra externa via QGraphicsDropShadowEffect
+        from PySide6.QtWidgets import QGraphicsDropShadowEffect
+        from PySide6.QtGui import QColor
+        shadow = QGraphicsDropShadowEffect(self)
+        shadow.setBlurRadius(32)
+        shadow.setOffset(0, 6)
+        shadow.setColor(QColor(0, 0, 0, 160))
+        self.setGraphicsEffect(shadow)
+
+    def paintEvent(self, event):
+        from PySide6.QtGui import QPainterPath, QColor
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        painter.setRenderHint(QPainter.SmoothPixmapTransform)
+
+        r = self._RADIUS
+        path = QPainterPath()
+        path.addRoundedRect(0, 0, self.width(), self.height(), r, r)
+        painter.setClipPath(path)
+
+        if not self._pixmap.isNull():
+            scaled = self._pixmap.scaled(
+                self.size(),
+                Qt.KeepAspectRatioByExpanding,
+                Qt.SmoothTransformation,
+            )
+            x = (scaled.width()  - self.width())  // 2
+            y = (scaled.height() - self.height()) // 2
+            painter.drawPixmap(0, 0, scaled, x, y, self.width(), self.height())
+        else:
+            painter.fillRect(self.rect(), QColor("#242424"))
+
+        # Degradê escuro nas bordas (vinheta)
+        from PySide6.QtGui import QLinearGradient
+        for grad_args, rect in [
+            # esquerda → direita
+            ((0, 0, 80, 0), (0, 0, 80, self.height())),
+            # direita → esquerda
+            ((self.width(), 0, self.width() - 80, 0), (self.width() - 80, 0, 80, self.height())),
+            # topo → baixo
+            ((0, 0, 0, 60), (0, 0, self.width(), 60)),
+            # baixo → topo
+            ((0, self.height(), 0, self.height() - 60), (0, self.height() - 60, self.width(), 60)),
+        ]:
+            grad = QLinearGradient(*grad_args)
+            grad.setColorAt(0, QColor(0, 0, 0, 140))
+            grad.setColorAt(1, QColor(0, 0, 0, 0))
+            painter.fillRect(*rect, grad)
+
+        painter.end()
 
 
 class DashboardTab(QWidget):
@@ -31,22 +93,19 @@ class DashboardTab(QWidget):
         lay.setContentsMargins(24, 24, 24, 24)
         lay.setSpacing(20)
 
-        # Hero banner
-        hero = QFrame()
-        hero.setFixedHeight(140)
-        hero.setStyleSheet(f"""
-            background: {C_CARD};
-            border-radius: 12px;
-            border: 1px solid #aaaaaa;
-        """)
+        # Hero banner com imagem de fundo
+        hero = _HeroBanner()
+        hero.setFixedHeight(200)
         hero_lay = QVBoxLayout(hero)
         hero_lay.setContentsMargins(24, 20, 24, 20)
         hero_lay.setSpacing(4)
         hero_title = QLabel("BOM TREINO, <span style='color:#a3e635'>PEDRO</span>")
         hero_title.setTextFormat(Qt.RichText)
-        hero_title.setStyleSheet("font-size:28px; font-weight:800; color:#fff;")
+        hero_title.setStyleSheet("font-size:28px; font-weight:800; color:#fff; background:transparent;")
         hero_lay.addWidget(hero_title)
-        hero_lay.addWidget(label("75kg · 175cm · Meta: Hipertrofia", "sub"))
+        sub = label("75kg · 175cm · Meta: Hipertrofia", "sub")
+        sub.setStyleSheet("font-size:12px; color:#b3b3b3; background:transparent;")
+        hero_lay.addWidget(sub)
         lay.addWidget(hero)
 
         # Stat cards

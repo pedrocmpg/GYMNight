@@ -16,6 +16,15 @@ from ui.theme import (
     C_TEXT, C_TEXT2, C_TEXT3, card, label, separator,
 )
 
+def _apply_shadow(widget, blur=22, opacity=130, offset_y=4):
+    from PySide6.QtWidgets import QGraphicsDropShadowEffect
+    from PySide6.QtGui import QColor
+    eff = QGraphicsDropShadowEffect(widget)
+    eff.setBlurRadius(blur)
+    eff.setColor(QColor(0, 0, 0, opacity))
+    eff.setOffset(0, offset_y)
+    widget.setGraphicsEffect(eff)
+
 
 # ---------------------------------------------------------------------------
 # StatCard
@@ -26,6 +35,8 @@ class StatCard(QFrame):
         super().__init__(parent)
         self.setObjectName("card")
         self.setMinimumWidth(160)
+        self.setStyleSheet(f"QFrame#card {{ border: 1px solid #555555; border-radius: 14px; background: {C_CARD}; }}")
+        _apply_shadow(self)
         lay = QVBoxLayout(self)
         lay.setContentsMargins(16, 16, 16, 16)
         lay.setSpacing(6)
@@ -123,6 +134,8 @@ class RoutineCard(QFrame):
         self._root = QVBoxLayout(self)
         self._root.setContentsMargins(0, 0, 0, 0)
         self._root.setSpacing(0)
+        self.setStyleSheet(f"QFrame#card {{ border: 1px solid #555555; border-radius: 14px; background: {C_CARD}; }}")
+        _apply_shadow(self)
 
         # Header
         hdr = QWidget()
