@@ -95,13 +95,13 @@ class DashboardTab(QWidget):
 
         # Hero banner com imagem de fundo
         hero = _HeroBanner()
-        hero.setFixedHeight(200)
+        hero.setFixedHeight(210)
         hero_lay = QVBoxLayout(hero)
         hero_lay.setContentsMargins(24, 20, 24, 20)
         hero_lay.setSpacing(4)
         hero_title = QLabel("BOM TREINO, <span style='color:#a3e635'>PEDRO</span>")
         hero_title.setTextFormat(Qt.RichText)
-        hero_title.setStyleSheet("font-size:28px; font-weight:800; color:#fff; background:transparent;")
+        hero_title.setStyleSheet("font-size:42px; font-weight:800; color:#fff; background:transparent;")
         hero_lay.addWidget(hero_title)
         sub = label("75kg · 175cm · Meta: Hipertrofia", "sub")
         sub.setStyleSheet("font-size:12px; color:#b3b3b3; background:transparent;")

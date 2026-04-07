@@ -12,6 +12,13 @@ from ui.window import MainWindow
 
 def main():
     app = QApplication(sys.argv)
+
+    # Escala global 1.5x — fonte base de 20px (era 13px)
+    from PySide6.QtGui import QFont
+    font = QFont("Inter", 20)
+    font.setWeight(QFont.Medium)
+    app.setFont(font)
+
     app.setStyleSheet(DARK_QSS)
     MainWindow().show()
     sys.exit(app.exec())
