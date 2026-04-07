@@ -51,7 +51,7 @@ class WorkoutsTab(QWidget):
         hdr.addStretch()
 
         # Botão + Cardio (avulso, fora do treino)
-        cardio_btn = QPushButton("+ Cardio")
+        cardio_btn = QPushButton("🫀 Cardio")
         cardio_btn.setFixedHeight(38)
         cardio_btn.setStyleSheet(f"""
             QPushButton {{
@@ -69,7 +69,7 @@ class WorkoutsTab(QWidget):
         cardio_btn.clicked.connect(self._open_cardio)
         hdr.addWidget(cardio_btn)
 
-        new_btn = QPushButton("+ Novo Treino")
+        new_btn = QPushButton("＋ Novo Treino")
         new_btn.setFixedHeight(38)
         new_btn.clicked.connect(self._create_workout)
         hdr.addWidget(new_btn)

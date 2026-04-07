@@ -26,7 +26,7 @@ C_RED_BG    = "#2a0a0a"
 # ---------------------------------------------------------------------------
 
 DARK_QSS = f"""
-* {{ font-family: 'Inter', 'Segoe UI', sans-serif; }}
+* {{ font-family: 'Inter', 'Segoe UI', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif; }}
 
 QMainWindow, QDialog, QWidget {{
     background-color: {C_BG};

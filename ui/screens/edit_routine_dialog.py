@@ -4,7 +4,7 @@ Diálogo para editar nome e exercícios de uma rotina existente.
 """
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QPoint
 from PySide6.QtWidgets import (
     QDialog, QDialogButtonBox, QFrame, QHBoxLayout,
     QLabel, QLineEdit, QListWidget, QListWidgetItem,
@@ -13,20 +13,20 @@ from PySide6.QtWidgets import (
 
 from engine import NormalizationEngine, Routine, RoutineManager
 from ui.theme import C_BORDER, C_GREEN, C_GREEN_BG, C_RED, C_TEXT, C_TEXT2, C_TEXT3, label, separator
+from ui.dialogs import FramelessDialog
 
 
-class EditRoutineDialog(QDialog):
+class EditRoutineDialog(FramelessDialog):
     """Edita nome e lista de exercícios de uma rotina."""
 
     def __init__(self, routine: Routine, rm: RoutineManager,
                  norm: NormalizationEngine, parent=None):
-        super().__init__(parent)
+        super().__init__("EDITAR TREINO", parent)
         self._routine = routine
         self._rm      = rm
         self._norm    = norm
         self._ex_ids: list[int] = []
         self._ex_names: list[str] = []
-        self.setWindowTitle("Editar Treino")
         self.setMinimumWidth(600)
         self.setMinimumHeight(500)
         self.resize(640, 560)
@@ -34,9 +34,7 @@ class EditRoutineDialog(QDialog):
         self._load_current()
 
     def _build(self):
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(24, 24, 24, 24)
-        lay.setSpacing(16)
+        lay = self.content_layout()
 
         lay.addWidget(label("EDITAR TREINO", "h2"))
         lay.addWidget(separator())
@@ -54,7 +52,7 @@ class EditRoutineDialog(QDialog):
         self._search.setPlaceholderText("Buscar exercício para adicionar...")
         self._search.returnPressed.connect(self._add_exercise)
         self._search.textChanged.connect(self._on_search_changed)
-        add_btn = QPushButton("Adicionar")
+        add_btn = QPushButton("＋ Adicionar")
         add_btn.setFixedHeight(38)
         add_btn.clicked.connect(self._add_exercise)
         search_row.addWidget(self._search)
@@ -86,7 +84,7 @@ class EditRoutineDialog(QDialog):
         lay.addWidget(self._list)
 
         # Botão remover
-        remove_btn = QPushButton("X Remover Selecionado")
+        remove_btn = QPushButton("🗑 Remover Selecionado")
         remove_btn.setObjectName("danger")
         remove_btn.clicked.connect(self._remove_selected)
         lay.addWidget(remove_btn)

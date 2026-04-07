@@ -55,7 +55,7 @@ class ActiveWorkoutScreen(QWidget):
 
         # Header
         hdr = QHBoxLayout()
-        back_btn = QPushButton("< Voltar")
+        back_btn = QPushButton("← Voltar")
         back_btn.setObjectName("ghost")
         back_btn.setFixedWidth(90)
         back_btn.clicked.connect(self._confirm_back)
@@ -115,10 +115,10 @@ class ActiveWorkoutScreen(QWidget):
         ex_lay.setSpacing(14)
 
         card_hdr = QHBoxLayout()
-        self._ex_icon = QLabel("G")
+        self._ex_icon = QLabel("🏋")
         self._ex_icon.setFixedSize(44, 44)
         self._ex_icon.setAlignment(Qt.AlignCenter)
-        self._ex_icon.setStyleSheet(f"background:{C_GREEN_BG}; color:{C_GREEN}; border-radius:10px; font-size:16px; font-weight:700;")
+        self._ex_icon.setStyleSheet(f"background:{C_GREEN_BG}; border-radius:10px; font-size:20px;")
         card_hdr.addWidget(self._ex_icon)
         card_hdr.addSpacing(12)
 
@@ -151,7 +151,7 @@ class ActiveWorkoutScreen(QWidget):
         cardio_title = label("CARDIO", "h3")
         cardio_hdr.addWidget(cardio_title)
         cardio_hdr.addStretch()
-        add_cardio_btn = QPushButton("+ Cardio")
+        add_cardio_btn = QPushButton("🫀 Cardio")
         add_cardio_btn.setFixedHeight(34)
         add_cardio_btn.setStyleSheet(f"""
             QPushButton {{
@@ -188,12 +188,12 @@ class ActiveWorkoutScreen(QWidget):
         nav.setContentsMargins(24, 10, 24, 10)
         nav.setSpacing(12)
 
-        self._prev_btn = QPushButton("Anterior")
+        self._prev_btn = QPushButton("← Anterior")
         self._prev_btn.setObjectName("ghost")
         self._prev_btn.setMinimumHeight(44)
         self._prev_btn.clicked.connect(self._prev)
 
-        self._next_btn = QPushButton("Próximo")
+        self._next_btn = QPushButton("Próximo →")
         self._next_btn.setMinimumHeight(44)
         self._next_btn.clicked.connect(self._next)
 
@@ -406,7 +406,7 @@ class ActiveWorkoutScreen(QWidget):
             )
             row_lay.addWidget(type_combo, 2)
 
-            check = QPushButton("OK")
+            check = QPushButton("✔")
             check.setFixedSize(40, 40)
             check.setCheckable(True)
             check.setChecked(s["done"])
@@ -418,7 +418,7 @@ class ActiveWorkoutScreen(QWidget):
 
         self._update_progress()
         self._prev_btn.setEnabled(idx > 0)
-        self._next_btn.setText("Finalizar" if idx == len(self._exercises) - 1 else "Próximo")
+        self._next_btn.setText("✔ Finalizar" if idx == len(self._exercises) - 1 else "Próximo →")
 
     def _style_check(self, btn: QPushButton, done: bool):
         if done:

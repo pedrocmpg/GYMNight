@@ -1,5 +1,4 @@
-# Mapeamento de Ativação Muscular - GYMNight (Versão 200+ Exercícios - Sem Numeração)
-
+# Mapeamento de Ativação Muscular - GYMNight
 Este documento apresenta a distribuição percentual de ativação muscular para **200 exercícios** de musculação, calistenia e funcional. Os valores foram ajustados para garantir que a soma de cada linha seja **100%**, refletindo a proporção de esforço entre os grupos musculares principais e estabilizadores.
 
 | Exercício (Canônico) | Peito (%) | Costas (%) | Ombros (%) | Bíceps (%) | Tríceps (%) | Pernas (%) | Abdômen (%) |

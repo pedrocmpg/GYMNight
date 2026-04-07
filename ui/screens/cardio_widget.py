@@ -73,20 +73,33 @@ class CardioPickerDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
         self._selected_name: str = ""
         self._cardio_types = parse_cardio_types()
-        self.setWindowTitle("Selecionar Cardio")
         self.setMinimumWidth(460)
         self._build()
 
     def _build(self):
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(24, 24, 24, 24)
-        lay.setSpacing(14)
+        from ui.titlebar import build_dialog_titlebar
 
-        lay.addWidget(label("ADICIONAR CARDIO", "h2"))
-        lay.addWidget(label("Selecione o tipo de atividade cardiovascular.", "sub"))
-        lay.addWidget(separator())
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+
+        root.addWidget(build_dialog_titlebar(self, "ADICIONAR CARDIO"))
+
+        content = QWidget()
+        content.setStyleSheet(
+            "background: #242424;"
+            "border-bottom-left-radius: 14px;"
+            "border-bottom-right-radius: 14px;"
+        )
+        lay = QVBoxLayout(content)
+        lay.setContentsMargins(24, 20, 24, 24)
+        lay.setSpacing(14)
+        root.addWidget(content)
+
+        self.setStyleSheet(f"QDialog {{ border: 1px solid {C_BORDER}; border-radius: 14px; }}")
 
         # Campo de busca com popup de lista
         lay.addWidget(label("Tipo de Cardio", "h3"))
@@ -222,10 +235,10 @@ class CardioPickerDialog(QDialog):
 
         # Botões
         btn_row = QHBoxLayout()
-        cancel = QPushButton("Cancelar")
+        cancel = QPushButton("✕ Cancelar")
         cancel.setObjectName("ghost")
         cancel.clicked.connect(self.reject)
-        confirm = QPushButton("Adicionar")
+        confirm = QPushButton("＋ Adicionar")
         confirm.clicked.connect(self._confirm)
         btn_row.addWidget(cancel)
         btn_row.addWidget(confirm)
@@ -334,7 +347,7 @@ class CardioRow(QFrame):
         lay.setSpacing(12)
 
         # Ícone
-        icon = QLabel("C")
+        icon = QLabel("🫀")
         icon.setStyleSheet(f"font-size:20px; color:{C_GREEN}; font-weight:700;")
         lay.addWidget(icon)
 
@@ -354,7 +367,7 @@ class CardioRow(QFrame):
         lay.addStretch()
 
         # Botão remover
-        rm = QPushButton("X")
+        rm = QPushButton("✕")
         rm.setFixedSize(28, 28)
         rm.setStyleSheet(f"background:transparent; color:{C_TEXT3}; border:none; font-size:14px; font-weight:700;")
         rm.clicked.connect(lambda: self.remove_requested.emit(self))

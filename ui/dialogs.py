@@ -5,21 +5,63 @@ Diálogos modais: CreateWorkoutDialog com autocomplete de exercícios.
 from __future__ import annotations
 import unicodedata
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, QPoint
 from PySide6.QtGui import QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
-    QCompleter, QDialog, QFrame, QHBoxLayout, QLineEdit,
+    QCompleter, QDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
     QListView, QPushButton, QScrollArea, QSpinBox, QVBoxLayout, QWidget,
 )
 
 from engine import NormalizationEngine
 from ui.theme import C_BORDER, C_CARD, C_CARD2, C_GREEN, C_TEXT, C_TEXT2, label, separator
+from ui.titlebar import build_dialog_titlebar
 
 
 def _norm(text: str) -> str:
     """Lowercase + remove acentos."""
     nfd = unicodedata.normalize("NFD", text.lower().strip())
     return "".join(c for c in nfd if unicodedata.category(c) != "Mn")
+
+
+# ---------------------------------------------------------------------------
+# FramelessDialog — base para todos os diálogos sem borda nativa
+# ---------------------------------------------------------------------------
+
+class FramelessDialog(QDialog):
+    """
+    QDialog sem borda nativa com titlebar customizada (drag + botão fechar).
+    Todos os diálogos do app devem herdar desta classe.
+    """
+
+    def __init__(self, title: str = "", parent=None):
+        super().__init__(parent)
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.Dialog)
+
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+
+        # Titlebar com drag + botão fechar (centralizado em ui/titlebar.py)
+        root.addWidget(build_dialog_titlebar(self, title))
+
+        # Área de conteúdo
+        self._content_w = QWidget()
+        self._content_w.setStyleSheet(
+            "background: #242424;"
+            "border-bottom-left-radius: 14px;"
+            "border-bottom-right-radius: 14px;"
+        )
+        self._content_lay = QVBoxLayout(self._content_w)
+        self._content_lay.setContentsMargins(24, 20, 24, 24)
+        self._content_lay.setSpacing(16)
+        root.addWidget(self._content_w)
+
+        self.setStyleSheet(
+            f"QDialog {{ border: 1px solid {C_BORDER}; border-radius: 14px; }}"
+        )
+
+    def content_layout(self) -> QVBoxLayout:
+        return self._content_lay
 
 
 # ---------------------------------------------------------------------------
@@ -121,20 +163,17 @@ class ExerciseLineEdit(QLineEdit):
 # CreateWorkoutDialog
 # ---------------------------------------------------------------------------
 
-class CreateWorkoutDialog(QDialog):
+class CreateWorkoutDialog(FramelessDialog):
     def __init__(self, norm: NormalizationEngine, parent=None):
-        super().__init__(parent)
+        super().__init__("CRIAR TREINO", parent)
         self._norm = norm
         self._ex_widgets: list[dict] = []
-        self.setWindowTitle("Criar Treino")
         self.setMinimumWidth(500)
         self.setMaximumHeight(700)
         self._build()
 
     def _build(self):
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(24, 24, 24, 24)
-        lay.setSpacing(16)
+        lay = self.content_layout()
 
         lay.addWidget(label("CRIAR TREINO", "h2"))
         lay.addWidget(label("Monte seu treino personalizado com exercícios, séries e repetições.", "sub"))
@@ -177,12 +216,12 @@ class CreateWorkoutDialog(QDialog):
         self._form_lay.addLayout(self._ex_container)
         self._add_exercise_block()
 
-        add_ex = QPushButton("+ Adicionar exercício")
+        add_ex = QPushButton("＋ Adicionar exercício")
         add_ex.setObjectName("ghost")
         add_ex.clicked.connect(self._add_exercise_block)
         self._form_lay.addWidget(add_ex)
 
-        save = QPushButton("Salvar Treino")
+        save = QPushButton("💾 Salvar Treino")
         save.setMinimumHeight(44)
         save.clicked.connect(self.accept)
         lay.addWidget(save)

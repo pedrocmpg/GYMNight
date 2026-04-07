@@ -111,10 +111,10 @@ class DashboardTab(QWidget):
         # Stat cards
         stats_row = QHBoxLayout()
         stats_row.setSpacing(12)
-        self._stat_treinos   = StatCard("*", "Treinos esta semana", "0", "Meta: 5")
-        self._stat_volume    = StatCard("V", "Volume total", "0 kg", "kg levantados")
-        self._stat_sequencia = StatCard("+", "Sequencia", "0", "dias seguidos")
-        self._stat_cardio    = StatCard("C", "Cardio esta semana", "0 min", "tempo total")
+        self._stat_treinos   = StatCard("🏋", "Treinos esta semana", "0", "Meta: 5")
+        self._stat_volume    = StatCard("📦", "Volume total", "0 kg", "kg levantados")
+        self._stat_sequencia = StatCard("🔥", "Sequência", "0", "dias seguidos")
+        self._stat_cardio    = StatCard("🫀", "Cardio esta semana", "0 min", "tempo total")
         for s in [self._stat_treinos, self._stat_volume, self._stat_sequencia, self._stat_cardio]:
             stats_row.addWidget(s)
         lay.addLayout(stats_row)

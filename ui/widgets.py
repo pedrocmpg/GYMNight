@@ -71,11 +71,11 @@ class WeekDayDot(QWidget):
         lay.setSpacing(4)
         lay.setAlignment(Qt.AlignCenter)
 
-        dot = _LightningDot() if active else QLabel("-")
+        dot = _LightningDot() if active else QLabel("·")
         dot.setFixedSize(40, 40)
         if not active:
             dot.setAlignment(Qt.AlignCenter)
-            dot.setStyleSheet(f"background:{C_CARD}; color:{C_TEXT3}; border-radius:10px; font-size:14px; border:1px solid {C_BORDER};")
+            dot.setStyleSheet(f"background:{C_CARD}; color:{C_TEXT3}; border-radius:10px; font-size:20px; border:1px solid {C_BORDER};")
         lay.addWidget(dot)
 
         d = label(day, "sub")
@@ -178,10 +178,10 @@ class RoutineCard(QFrame):
         hdr_lay = QHBoxLayout(hdr)
         hdr_lay.setContentsMargins(16, 14, 16, 14)
 
-        icon = QLabel("G")
+        icon = QLabel("🏋")
         icon.setFixedSize(36, 36)
         icon.setAlignment(Qt.AlignCenter)
-        icon.setStyleSheet(f"background:{C_GREEN_BG}; color:{C_GREEN}; border-radius:8px; font-size:14px; font-weight:700;")
+        icon.setStyleSheet(f"background:{C_GREEN_BG}; border-radius:8px; font-size:18px;")
         hdr_lay.addWidget(icon)
         hdr_lay.addSpacing(10)
 
@@ -196,7 +196,7 @@ class RoutineCard(QFrame):
         hdr_lay.addStretch()
 
         # Botão Editar
-        edit_btn = QPushButton("Ed")
+        edit_btn = QPushButton("✏")
         edit_btn.setFixedSize(48, 36)
         edit_btn.setToolTip("Editar treino")
         edit_btn.setStyleSheet(f"""
@@ -220,14 +220,14 @@ class RoutineCard(QFrame):
         hdr_lay.addSpacing(6)
 
         # Botão Iniciar
-        start_btn = QPushButton(">>")
+        start_btn = QPushButton("▶")
         start_btn.setFixedSize(48, 36)
-        start_btn.setStyleSheet(f"background:{C_GREEN}; color:#000; border-radius:8px; font-size:14px; font-weight:700; padding:0;")
+        start_btn.setStyleSheet(f"background:{C_GREEN}; color:#000; border-radius:8px; font-size:16px; font-weight:700; padding:0;")
         start_btn.clicked.connect(lambda: self.start_clicked.emit(self._routine))
         hdr_lay.addWidget(start_btn)
 
-        self._arrow = QLabel(">")
-        self._arrow.setStyleSheet(f"color:{C_TEXT3}; font-size:20px; font-weight:700; padding-left:8px;")
+        self._arrow = QLabel("▶")
+        self._arrow.setStyleSheet(f"color:{C_TEXT3}; font-size:14px; font-weight:700; padding-left:8px;")
         hdr_lay.addWidget(self._arrow)
 
         self._root.addWidget(hdr)
@@ -263,4 +263,4 @@ class RoutineCard(QFrame):
     def _toggle(self):
         self._expanded = not self._expanded
         self._content.setVisible(self._expanded)
-        self._arrow.setText("v" if self._expanded else ">")
+        self._arrow.setText("▼" if self._expanded else "▶")
