@@ -51,7 +51,7 @@ class WorkoutsTab(QWidget):
         hdr.addStretch()
 
         # Botão + Cardio (avulso, fora do treino)
-        cardio_btn = QPushButton("🏃 + Cardio")
+        cardio_btn = QPushButton("+ Cardio")
         cardio_btn.setFixedHeight(38)
         cardio_btn.setStyleSheet(f"""
             QPushButton {{
@@ -193,6 +193,7 @@ class WorkoutsTab(QWidget):
             exs = self._rm.get_routine_exercises(r.id)
             c = RoutineCard(r, exs)
             c.start_clicked.connect(self._on_start)
+            c.edit_clicked.connect(self._on_edit)
             self._list_lay.insertWidget(i, c)
             self._all_cards.append((r, c))
 
@@ -205,6 +206,13 @@ class WorkoutsTab(QWidget):
             "INSERT INTO workout_sessions (routine_id) VALUES (?)", (routine.id,)
         )
         self.start_workout.emit(routine, session_id)
+
+    def _on_edit(self, routine: Routine):
+        """Abre diálogo para editar nome e exercícios da rotina."""
+        from ui.screens.edit_routine_dialog import EditRoutineDialog
+        dlg = EditRoutineDialog(routine, self._rm, self._norm, parent=self)
+        if dlg.exec() == QDialog.Accepted:
+            self.reload()
 
     def _create_workout(self):
         dlg = CreateWorkoutDialog(self._norm, parent=self)

@@ -5,7 +5,7 @@ Widgets reutilizáveis: StatCard, WeekDayDot, MuscleBar, RoutineCard.
 from __future__ import annotations
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor, QFont, QPainter
+from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QBrush
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget,
 )
@@ -65,23 +65,57 @@ class StatCard(QFrame):
 class WeekDayDot(QWidget):
     def __init__(self, day: str, active: bool, parent=None):
         super().__init__(parent)
+        self._active = active
         lay = QVBoxLayout(self)
         lay.setContentsMargins(4, 4, 4, 4)
         lay.setSpacing(4)
         lay.setAlignment(Qt.AlignCenter)
 
-        dot = QLabel("⚡" if active else "—")
-        dot.setAlignment(Qt.AlignCenter)
+        dot = _LightningDot() if active else QLabel("-")
         dot.setFixedSize(40, 40)
-        if active:
-            dot.setStyleSheet(f"background:{C_GREEN}; color:#000; border-radius:10px; font-size:16px; font-weight:700;")
-        else:
+        if not active:
+            dot.setAlignment(Qt.AlignCenter)
             dot.setStyleSheet(f"background:{C_CARD}; color:{C_TEXT3}; border-radius:10px; font-size:14px; border:1px solid {C_BORDER};")
         lay.addWidget(dot)
 
         d = label(day, "sub")
         d.setAlignment(Qt.AlignCenter)
         lay.addWidget(d)
+
+
+class _LightningDot(QWidget):
+    """Desenha um raio (lightning bolt) via QPainter — sem depender de emoji."""
+
+    def __init__(self):
+        super().__init__(None)
+
+    def paintEvent(self, _):
+        from PySide6.QtGui import QPainterPath, QBrush
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        w, h = self.width(), self.height()
+
+        # Fundo arredondado verde
+        p.setBrush(QBrush(QColor(C_GREEN)))
+        p.setPen(Qt.NoPen)
+        p.drawRoundedRect(0, 0, w, h, 10, 10)
+
+        # Raio (lightning bolt) em preto
+        path = QPainterPath()
+        cx, cy = w / 2, h / 2
+        # Pontos do raio escalados para o tamanho do widget
+        s = min(w, h) * 0.55
+        path.moveTo(cx + s * 0.15,  cy - s * 0.5)   # topo direita
+        path.lineTo(cx - s * 0.05,  cy - s * 0.02)  # meio esquerda
+        path.lineTo(cx + s * 0.18,  cy - s * 0.02)  # meio direita
+        path.lineTo(cx - s * 0.15,  cy + s * 0.5)   # baixo esquerda
+        path.lineTo(cx + s * 0.05,  cy + s * 0.02)  # meio direita baixo
+        path.lineTo(cx - s * 0.18,  cy + s * 0.02)  # meio esquerda baixo
+        path.closeSubpath()
+
+        p.setBrush(QBrush(QColor("#000000")))
+        p.drawPath(path)
+        p.end()
 
 
 # ---------------------------------------------------------------------------
@@ -119,7 +153,8 @@ class MuscleBar(QWidget):
 # ---------------------------------------------------------------------------
 
 class RoutineCard(QFrame):
-    start_clicked = Signal(object)  # Routine
+    start_clicked = Signal(object)   # Routine
+    edit_clicked  = Signal(object)   # Routine
 
     def __init__(self, routine: Routine, exercises: list[Exercise], parent=None):
         super().__init__(parent)
@@ -143,10 +178,10 @@ class RoutineCard(QFrame):
         hdr_lay = QHBoxLayout(hdr)
         hdr_lay.setContentsMargins(16, 14, 16, 14)
 
-        icon = QLabel("⚡")
+        icon = QLabel("G")
         icon.setFixedSize(36, 36)
         icon.setAlignment(Qt.AlignCenter)
-        icon.setStyleSheet(f"background:{C_GREEN_BG}; color:{C_GREEN}; border-radius:8px; font-size:16px; font-weight:700;")
+        icon.setStyleSheet(f"background:{C_GREEN_BG}; color:{C_GREEN}; border-radius:8px; font-size:14px; font-weight:700;")
         hdr_lay.addWidget(icon)
         hdr_lay.addSpacing(10)
 
@@ -160,14 +195,39 @@ class RoutineCard(QFrame):
         hdr_lay.addLayout(info)
         hdr_lay.addStretch()
 
-        start_btn = QPushButton("▶")
-        start_btn.setFixedSize(32, 32)
+        # Botão Editar
+        edit_btn = QPushButton("Ed")
+        edit_btn.setFixedSize(48, 36)
+        edit_btn.setToolTip("Editar treino")
+        edit_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent;
+                color: {C_TEXT3};
+                border: 1px solid {C_BORDER};
+                border-radius: 8px;
+                font-size: 13px;
+                font-weight: 600;
+                padding: 0;
+            }}
+            QPushButton:hover {{
+                color: {C_GREEN};
+                border-color: {C_GREEN};
+                background: {C_GREEN_BG};
+            }}
+        """)
+        edit_btn.clicked.connect(lambda: self.edit_clicked.emit(self._routine))
+        hdr_lay.addWidget(edit_btn)
+        hdr_lay.addSpacing(6)
+
+        # Botão Iniciar
+        start_btn = QPushButton(">>")
+        start_btn.setFixedSize(48, 36)
         start_btn.setStyleSheet(f"background:{C_GREEN}; color:#000; border-radius:8px; font-size:14px; font-weight:700; padding:0;")
         start_btn.clicked.connect(lambda: self.start_clicked.emit(self._routine))
         hdr_lay.addWidget(start_btn)
 
-        self._arrow = QLabel("›")
-        self._arrow.setStyleSheet(f"color:{C_TEXT3}; font-size:20px; padding-left:8px;")
+        self._arrow = QLabel(">")
+        self._arrow.setStyleSheet(f"color:{C_TEXT3}; font-size:20px; font-weight:700; padding-left:8px;")
         hdr_lay.addWidget(self._arrow)
 
         self._root.addWidget(hdr)
@@ -203,4 +263,4 @@ class RoutineCard(QFrame):
     def _toggle(self):
         self._expanded = not self._expanded
         self._content.setVisible(self._expanded)
-        self._arrow.setText("∨" if self._expanded else "›")
+        self._arrow.setText("v" if self._expanded else ">")

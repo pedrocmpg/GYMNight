@@ -55,7 +55,7 @@ class ActiveWorkoutScreen(QWidget):
 
         # Header
         hdr = QHBoxLayout()
-        back_btn = QPushButton("‹ Voltar")
+        back_btn = QPushButton("< Voltar")
         back_btn.setObjectName("ghost")
         back_btn.setFixedWidth(90)
         back_btn.clicked.connect(self._confirm_back)
@@ -115,10 +115,10 @@ class ActiveWorkoutScreen(QWidget):
         ex_lay.setSpacing(14)
 
         card_hdr = QHBoxLayout()
-        self._ex_icon = QLabel("⚡")
+        self._ex_icon = QLabel("G")
         self._ex_icon.setFixedSize(44, 44)
         self._ex_icon.setAlignment(Qt.AlignCenter)
-        self._ex_icon.setStyleSheet(f"background:{C_GREEN_BG}; color:{C_GREEN}; border-radius:10px; font-size:20px;")
+        self._ex_icon.setStyleSheet(f"background:{C_GREEN_BG}; color:{C_GREEN}; border-radius:10px; font-size:16px; font-weight:700;")
         card_hdr.addWidget(self._ex_icon)
         card_hdr.addSpacing(12)
 
@@ -406,7 +406,7 @@ class ActiveWorkoutScreen(QWidget):
             )
             row_lay.addWidget(type_combo, 2)
 
-            check = QPushButton("✓")
+            check = QPushButton("OK")
             check.setFixedSize(40, 40)
             check.setCheckable(True)
             check.setChecked(s["done"])
@@ -492,7 +492,7 @@ class ActiveWorkoutScreen(QWidget):
         # Resumo
         summary = f"Treino de Força Concluído!\nVolume: {vol:.0f} kg · Duração: {mins:02d}:{secs:02d}"
         if cardio["cardio_count"] > 0:
-            summary += f"\n\n🏃 {int(cardio['cardio_total_min'])} min de Cardio"
+            summary += f"\n\n{int(cardio['cardio_total_min'])} min de Cardio"
             if cardio["cardio_avg_pse"]:
                 summary += f" · PSE médio: {cardio['cardio_avg_pse']}/10"
         QMessageBox.information(self, "Treino Finalizado", summary)

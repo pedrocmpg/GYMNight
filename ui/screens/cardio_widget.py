@@ -334,8 +334,8 @@ class CardioRow(QFrame):
         lay.setSpacing(12)
 
         # Ícone
-        icon = QLabel("🏃")
-        icon.setStyleSheet(f"font-size:20px;")
+        icon = QLabel("C")
+        icon.setStyleSheet(f"font-size:20px; color:{C_GREEN}; font-weight:700;")
         lay.addWidget(icon)
 
         # Info
@@ -354,9 +354,9 @@ class CardioRow(QFrame):
         lay.addStretch()
 
         # Botão remover
-        rm = QPushButton("✕")
+        rm = QPushButton("X")
         rm.setFixedSize(28, 28)
-        rm.setStyleSheet(f"background:transparent; color:{C_TEXT3}; border:none; font-size:14px;")
+        rm.setStyleSheet(f"background:transparent; color:{C_TEXT3}; border:none; font-size:14px; font-weight:700;")
         rm.clicked.connect(lambda: self.remove_requested.emit(self))
         lay.addWidget(rm)
 

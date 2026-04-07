@@ -59,16 +59,16 @@ class MainWindow(QMainWindow):
         tb.setContentsMargins(20, 0, 20, 0)
         tb.setSpacing(8)
 
-        logo_icon = QLabel("⚡")
-        logo_icon.setStyleSheet(f"color:{C_GREEN}; font-size:18px;")
+        logo_icon = QLabel("*")
+        logo_icon.setStyleSheet(f"color:{C_GREEN}; font-size:18px; font-weight:900;")
         logo_text = QLabel("GYMNight")
         logo_text.setStyleSheet("color:#fff; font-size:15px; font-weight:800; letter-spacing:1px;")
         tb.addWidget(logo_icon)
         tb.addWidget(logo_text)
         tb.addStretch()
 
-        self._btn_dash     = QPushButton("⌂  Dashboard")
-        self._btn_workouts = QPushButton("⚡  Treinos")
+        self._btn_dash     = QPushButton("Dashboard")
+        self._btn_workouts = QPushButton("Treinos")
         for btn in [self._btn_dash, self._btn_workouts]:
             btn.setFixedHeight(34)
         self._btn_dash.clicked.connect(lambda: self._navigate(0))
