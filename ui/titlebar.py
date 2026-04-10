@@ -122,7 +122,11 @@ def make_wm_buttons(win: QWidget, *, show_minimize: bool = True, show_fullscreen
         "QWidget#wm_ctrl_box {"
         "  background: #1e1e1e;"
         f"  border: 1px solid {C_BORDER};"
-        "  border-radius: 10px;"
+        "  border-right: none;"
+        "  border-top: none;"
+        "  border-top-right-radius: 0px;"
+        "  border-bottom-left-radius: 10px;"
+        "  border-top-left-radius: 0px;"
         "}"
     )
 

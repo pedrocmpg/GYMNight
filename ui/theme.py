@@ -34,6 +34,10 @@ QMainWindow, QDialog, QWidget {{
     font-size: 20px;
 }}
 
+QMainWindow {{
+    background-color: transparent;
+}}
+
 QTabWidget::pane {{ border: none; background: {C_BG}; }}
 QTabBar::tab {{
     background: transparent;

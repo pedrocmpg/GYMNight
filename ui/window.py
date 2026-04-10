@@ -5,7 +5,7 @@ MainWindow: frameless window com titlebar customizada + navegação + QStackedWi
 from __future__ import annotations
 
 from PySide6.QtCore import QEvent, QObject, QPoint, Qt, QThread
-from PySide6.QtGui import QCursor
+from PySide6.QtGui import QCursor, QPainter, QPainterPath, QColor
 from PySide6.QtWidgets import (
     QApplication, QHBoxLayout, QLabel, QMainWindow, QPushButton,
     QStackedWidget, QVBoxLayout, QWidget,
@@ -21,6 +21,41 @@ from ui.screens.active_workout import ActiveWorkoutScreen
 
 
 # ---------------------------------------------------------------------------
+# _RoundedWidget — widget central com cantos arredondados via clip
+# ---------------------------------------------------------------------------
+
+class _RoundedWidget(QWidget):
+    """Widget central que clipa todos os filhos com border-radius."""
+
+    RADIUS = 12
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        # Aplica máscara de região para clipar filhos nos cantos
+        from PySide6.QtGui import QRegion
+        from PySide6.QtCore import QRect
+        path = QPainterPath()
+        path.addRoundedRect(0, 0, self.width(), self.height(), self.RADIUS, self.RADIUS)
+        region = QRegion(path.toFillPolygon().toPolygon())
+        self.setMask(region)
+
+    def paintEvent(self, event):
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        path = QPainterPath()
+        path.addRoundedRect(0, 0, self.width(), self.height(), self.RADIUS, self.RADIUS)
+        p.fillPath(path, QColor(C_SURFACE))
+        from PySide6.QtGui import QPen
+        p.setPen(QPen(QColor(C_BORDER), 1))
+        p.drawPath(path)
+        p.end()
+
+
+# ---------------------------------------------------------------------------
 # TitleBar da MainWindow
 # ---------------------------------------------------------------------------
 
@@ -33,11 +68,14 @@ class _TitleBar(QWidget):
 
         self.setFixedHeight(52)
         self.setStyleSheet(
-            f"background:{C_SURFACE}; border-bottom:1px solid {C_BORDER};"
+            f"background:{C_SURFACE};"
+            f"border-bottom:1px solid {C_BORDER};"
+            f"border-top-left-radius:12px;"
+            f"border-top-right-radius:12px;"
         )
 
         lay = QHBoxLayout(self)
-        lay.setContentsMargins(20, 0, 12, 0)
+        lay.setContentsMargins(20, 0, 0, 0)
         lay.setSpacing(8)
 
         logo_icon = QLabel("⚡")
@@ -144,6 +182,7 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(900, 620)
         self.resize(1100, 720)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
 
         # Motor
         self._db       = DatabaseConnection("gymnight.db")
@@ -162,7 +201,7 @@ class MainWindow(QMainWindow):
         self._analyzer.moveToThread(self._worker)
         self._worker.start()
 
-        central = QWidget()
+        central = _RoundedWidget()
         self.setCentralWidget(central)
         root = QVBoxLayout(central)
         root.setContentsMargins(0, 0, 0, 0)
@@ -170,7 +209,7 @@ class MainWindow(QMainWindow):
 
         self._titlebar = _TitleBar(self)
 
-        self._btn_dash     = QPushButton("Dashboard")
+        self._btn_dash     = QPushButton("Início")
         self._btn_workouts = QPushButton("Treinos")
         for btn in (self._btn_dash, self._btn_workouts):
             btn.setFixedHeight(34)
