@@ -178,7 +178,7 @@ class RoutineCard(QFrame):
         hdr_lay = QHBoxLayout(hdr)
         hdr_lay.setContentsMargins(16, 14, 16, 14)
 
-        icon = QLabel("🏋")
+        icon = QLabel("◈")
         icon.setFixedSize(36, 36)
         icon.setAlignment(Qt.AlignCenter)
         icon.setStyleSheet(f"background:{C_GREEN_BG}; border-radius:8px; font-size:18px;")
@@ -196,7 +196,7 @@ class RoutineCard(QFrame):
         hdr_lay.addStretch()
 
         # Botão Editar
-        edit_btn = QPushButton("✏")
+        edit_btn = QPushButton("✎")
         edit_btn.setFixedSize(48, 36)
         edit_btn.setToolTip("Editar treino")
         edit_btn.setStyleSheet(f"""

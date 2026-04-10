@@ -115,7 +115,7 @@ class ActiveWorkoutScreen(QWidget):
         ex_lay.setSpacing(14)
 
         card_hdr = QHBoxLayout()
-        self._ex_icon = QLabel("🏋")
+        self._ex_icon = QLabel("◈")
         self._ex_icon.setFixedSize(44, 44)
         self._ex_icon.setAlignment(Qt.AlignCenter)
         self._ex_icon.setStyleSheet(f"background:{C_GREEN_BG}; border-radius:10px; font-size:20px;")
@@ -131,7 +131,7 @@ class ActiveWorkoutScreen(QWidget):
         card_hdr.addLayout(card_info)
         card_hdr.addStretch()
         self._ex_prog_lbl = QLabel("0/4")
-        self._ex_prog_lbl.setStyleSheet(f"color:{C_GREEN}; font-size:18px; font-weight:800;")
+        self._ex_prog_lbl.setStyleSheet(f"color:{C_GREEN}; font-size:18px; font-weight:800; font-family:'Arial';")
         card_hdr.addWidget(self._ex_prog_lbl)
         ex_lay.addLayout(card_hdr)
 
@@ -151,7 +151,7 @@ class ActiveWorkoutScreen(QWidget):
         cardio_title = label("CARDIO", "h3")
         cardio_hdr.addWidget(cardio_title)
         cardio_hdr.addStretch()
-        add_cardio_btn = QPushButton("🫀 Cardio")
+        add_cardio_btn = QPushButton("♡ Cardio")
         add_cardio_btn.setFixedHeight(34)
         add_cardio_btn.setStyleSheet(f"""
             QPushButton {{
@@ -285,7 +285,7 @@ class ActiveWorkoutScreen(QWidget):
 
         self._title.setText(routine.name.upper())
         self._series_data = [
-            [{"weight": "", "reps": "", "set_type": "N", "done": False} for _ in range(4)]
+            [{"weight": "", "reps": "", "set_type": "N", "done": False, "saved": False} for _ in range(4)]
             for _ in self._exercises
         ]
         self._populate_routine_combo()
@@ -446,8 +446,9 @@ class ActiveWorkoutScreen(QWidget):
                         "INSERT INTO workout_logs (exercise_id, session_id, weight_kg, reps, set_type) VALUES (?,?,?,?,?)",
                         (self._exercises[ex_idx].id, self._session_id, w, r, s.get("set_type", "N")),
                     )
-            except (ValueError, TypeError):
-                pass
+                    self._series_data[ex_idx][s_idx]["saved"] = True
+            except Exception as e:
+                print(f"[GYMNight] Erro ao salvar série ex={ex_idx} s={s_idx}: {e} | dados={s}")
 
     def _update_progress(self):
         total = sum(len(s) for s in self._series_data)
@@ -481,11 +482,42 @@ class ActiveWorkoutScreen(QWidget):
         self._save_cardio_logs()
 
         duration = self._rm.end_session(self._session_id) if self._session_id else 0
+
+        # Salva séries que têm dados mas não foram salvas ainda (ex: não marcadas com ✔)
+        if self._session_id:
+            for ex_idx, ex_series in enumerate(self._series_data):
+                for s_idx, s in enumerate(ex_series):
+                    if s.get("saved"):
+                        continue
+                    try:
+                        w = float(s["weight"]) if s["weight"] else 0.0
+                        r = int(s["reps"]) if s["reps"] else 0
+                        if w > 0 and r > 0:
+                            self._db.execute_write(
+                                "INSERT INTO workout_logs (exercise_id, session_id, weight_kg, reps, set_type) VALUES (?,?,?,?,?)",
+                                (self._exercises[ex_idx].id, self._session_id, w, r, s.get("set_type", "N")),
+                            )
+                    except Exception as e:
+                        print(f"[GYMNight] Erro ao salvar série no finish ex={ex_idx} s={s_idx}: {e}")
+
+        # Debug: mostra séries marcadas vs salvas no banco
+        done_series = [(i, j, s) for i, ex in enumerate(self._series_data)
+                       for j, s in enumerate(ex) if s.get("done")]
+        print(f"[GYMNight] Séries marcadas como done: {len(done_series)}")
+        for i, j, s in done_series:
+            print(f"  ex={i} s={j} weight={s.get('weight')} reps={s.get('reps')} set_type={s.get('set_type')}")
+
+        logs_count = self._db.fetchone(
+            "SELECT COUNT(*) AS c FROM workout_logs WHERE session_id=?", (self._session_id,)
+        )
+        print(f"[GYMNight] Registros no banco para session_id={self._session_id}: {logs_count['c'] if logs_count else 0}")
+
         row = self._db.fetchone(
             "SELECT COALESCE(SUM(weight_kg*reps),0) AS v FROM workout_logs WHERE session_id=?",
             (self._session_id,),
         )
         vol = float(row["v"]) if row else 0.0
+        print(f"[GYMNight] Volume calculado: {vol}")
         cardio = self._cardio_summary()
         mins, secs = divmod(duration, 60)
 

@@ -16,12 +16,11 @@ def main():
     # Escala global 1.5x — fonte base de 20px (era 13px)
     from PySide6.QtGui import QFont, QFontDatabase
 
-    # Garante fallback para emojis coloridos (Segoe UI Emoji no Windows)
-    QFontDatabase.addApplicationFont.__doc__  # no-op, só para importar
-    font = QFont()
-    font.setFamilies(["Inter", "Segoe UI", "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji"])
-    font.setPointSize(20)
+    font = QFont("Segoe UI")
+    font.setPixelSize(16)
     font.setWeight(QFont.Medium)
+    font.setWordSpacing(0)
+    font.setLetterSpacing(QFont.AbsoluteSpacing, 0)
     app.setFont(font)
 
     app.setStyleSheet(DARK_QSS)

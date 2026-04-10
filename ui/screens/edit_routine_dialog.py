@@ -84,7 +84,7 @@ class EditRoutineDialog(FramelessDialog):
         lay.addWidget(self._list)
 
         # Botão remover
-        remove_btn = QPushButton("🗑 Remover Selecionado")
+        remove_btn = QPushButton("⊘ Remover Selecionado")
         remove_btn.setObjectName("danger")
         remove_btn.clicked.connect(self._remove_selected)
         lay.addWidget(remove_btn)

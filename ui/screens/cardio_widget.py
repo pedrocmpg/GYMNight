@@ -213,7 +213,7 @@ class CardioPickerDialog(QDialog):
             }}
         """)
         self._pse_lbl = QLabel("5")
-        self._pse_lbl.setStyleSheet(f"color:{C_GREEN}; font-size:18px; font-weight:800; min-width:24px;")
+        self._pse_lbl.setStyleSheet(f"color:{C_GREEN}; font-size:18px; font-weight:800; min-width:24px; font-family:'Arial';")
         self._pse_lbl.setAlignment(Qt.AlignCenter)
         self._pse.valueChanged.connect(lambda v: self._pse_lbl.setText(str(v)))
         pse_row = QHBoxLayout()
@@ -347,7 +347,7 @@ class CardioRow(QFrame):
         lay.setSpacing(12)
 
         # Ícone
-        icon = QLabel("🫀")
+        icon = QLabel("♡")
         icon.setStyleSheet(f"font-size:20px; color:{C_GREEN}; font-weight:700;")
         lay.addWidget(icon)
 

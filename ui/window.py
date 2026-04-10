@@ -4,10 +4,10 @@ MainWindow: frameless window com titlebar customizada + navegação + QStackedWi
 """
 from __future__ import annotations
 
-from PySide6.QtCore import QPoint, Qt, QThread
+from PySide6.QtCore import QEvent, QObject, QPoint, Qt, QThread
 from PySide6.QtGui import QCursor
 from PySide6.QtWidgets import (
-    QHBoxLayout, QLabel, QMainWindow, QPushButton,
+    QApplication, QHBoxLayout, QLabel, QMainWindow, QPushButton,
     QStackedWidget, QVBoxLayout, QWidget,
 )
 
@@ -35,8 +35,6 @@ class _TitleBar(QWidget):
         self.setStyleSheet(
             f"background:{C_SURFACE}; border-bottom:1px solid {C_BORDER};"
         )
-        # Permite que eventos de mouse passem para a MainWindow
-        self.setAttribute(Qt.WA_TransparentForMouseEvents, False)
 
         lay = QHBoxLayout(self)
         lay.setContentsMargins(20, 0, 12, 0)
@@ -72,6 +70,70 @@ class _TitleBar(QWidget):
 
 
 # ---------------------------------------------------------------------------
+# _TitleBarDragFilter — event filter na QApplication para drag no X11/WSL
+# ---------------------------------------------------------------------------
+
+class _TitleBarDragFilter(QObject):
+    """
+    Drag da titlebar compatível com X11/WSL.
+    Usa windowHandle().startSystemMove() (Qt6) para delegar o drag ao WM,
+    com fallback manual via QCursor caso não esteja disponível.
+    """
+
+    def __init__(self, titlebar: _TitleBar, win: QMainWindow):
+        super().__init__(win)
+        self._titlebar = titlebar
+        self._win      = win
+        self._drag_pos: QPoint | None = None
+
+    def _in_titlebar(self, global_pos: QPoint) -> bool:
+        local = self._titlebar.mapFromGlobal(global_pos)
+        return self._titlebar.rect().contains(local)
+
+    def _over_button(self, global_pos: QPoint) -> bool:
+        local = self._titlebar.mapFromGlobal(global_pos)
+        child = self._titlebar.childAt(local)
+        return isinstance(child, QPushButton)
+
+    def _try_system_move(self) -> bool:
+        """Tenta usar o drag nativo do WM (funciona no X11/Wayland/WSL)."""
+        handle = self._win.windowHandle()
+        if handle is not None and hasattr(handle, "startSystemMove"):
+            handle.startSystemMove()
+            return True
+        return False
+
+    def eventFilter(self, obj, event):
+        t = event.type()
+
+        if t == QEvent.Type.MouseButtonPress and event.button() == Qt.LeftButton:
+            gpos = QCursor.pos()
+            if self._in_titlebar(gpos) and not self._over_button(gpos):
+                if not self._try_system_move():
+                    # fallback manual
+                    self._drag_pos = gpos - self._win.pos()
+
+        elif t == QEvent.Type.MouseMove:
+            if self._drag_pos is not None and event.buttons() & Qt.LeftButton:
+                self._win.move(QCursor.pos() - self._drag_pos)
+                return True
+
+        elif t == QEvent.Type.MouseButtonRelease and event.button() == Qt.LeftButton:
+            self._drag_pos = None
+
+        elif t == QEvent.Type.MouseButtonDblClick and event.button() == Qt.LeftButton:
+            gpos = QCursor.pos()
+            if self._in_titlebar(gpos) and not self._over_button(gpos):
+                if self._win.isMaximized():
+                    self._win.showNormal()
+                else:
+                    self._win.showMaximized()
+                return True
+
+        return False
+
+
+# ---------------------------------------------------------------------------
 # MainWindow
 # ---------------------------------------------------------------------------
 
@@ -82,8 +144,6 @@ class MainWindow(QMainWindow):
         self.setMinimumSize(900, 620)
         self.resize(1100, 720)
         self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
-
-        self._drag_pos: QPoint | None = None
 
         # Motor
         self._db       = DatabaseConnection("gymnight.db")
@@ -136,44 +196,11 @@ class MainWindow(QMainWindow):
         self._active_tab.finished.connect(self._go_workouts)
         self._active_tab.finished.connect(self._dash_tab.on_workout_finished)
 
+        # Instala o event filter global para drag funcionar no X11/WSL
+        self._drag_filter = _TitleBarDragFilter(self._titlebar, self)
+        QApplication.instance().installEventFilter(self._drag_filter)
+
         self._navigate(0)
-
-    # ------------------------------------------------------------------
-    # Drag da janela — tratado na MainWindow para capturar todos os cliques
-    # na área da titlebar independente dos widgets filhos
-    # ------------------------------------------------------------------
-
-    def _in_titlebar(self, pos: QPoint) -> bool:
-        """Retorna True se a posição (em coords da janela) está na titlebar."""
-        return pos.y() <= self._titlebar.height()
-
-    def mousePressEvent(self, event):
-        if event.button() == Qt.LeftButton and self._in_titlebar(event.pos()):
-            self._drag_pos = QCursor.pos() - self.pos()
-            event.accept()
-        else:
-            super().mousePressEvent(event)
-
-    def mouseMoveEvent(self, event):
-        if self._drag_pos is not None and event.buttons() & Qt.LeftButton:
-            self.move(QCursor.pos() - self._drag_pos)
-            event.accept()
-        else:
-            super().mouseMoveEvent(event)
-
-    def mouseReleaseEvent(self, event):
-        self._drag_pos = None
-        super().mouseReleaseEvent(event)
-
-    def mouseDoubleClickEvent(self, event):
-        if event.button() == Qt.LeftButton and self._in_titlebar(event.pos()):
-            if self.isMaximized():
-                self.showNormal()
-            else:
-                self.showMaximized()
-            event.accept()
-        else:
-            super().mouseDoubleClickEvent(event)
 
     # ------------------------------------------------------------------
 
@@ -205,6 +232,7 @@ class MainWindow(QMainWindow):
         self._navigate(1)
 
     def closeEvent(self, event):
+        QApplication.instance().removeEventFilter(self._drag_filter)
         self._worker.quit()
         self._worker.wait()
         self._db.close()

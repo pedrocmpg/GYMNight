@@ -9,9 +9,51 @@ Exporta:
 from __future__ import annotations
 
 from PySide6.QtCore import QPoint, Qt
+from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QWidget
 
 from ui.theme import C_BORDER
+
+
+# ---------------------------------------------------------------------------
+# _SquareIconButton — botão com quadrado cinza desenhado via QPainter
+# ---------------------------------------------------------------------------
+
+class _SquareIconButton(QPushButton):
+    """Botão de fullscreen com ícone de quadrado branco desenhado via QPainter."""
+
+    def __init__(self):
+        super().__init__()
+        self.setFixedSize(35, 30)
+        self.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                border: none;
+                border-radius: 7px;
+                padding: 0px;
+            }
+            QPushButton:hover {
+                background-color: #333333;
+            }
+            QPushButton:pressed {
+                background-color: #222222;
+            }
+        """)
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+        p = QPainter(self)
+        w, h = self.width(), self.height()
+        size = 9
+        x = (w - size) // 2
+        y = (h - size) // 2
+        from PySide6.QtGui import QPen
+        pen = QPen(QColor("#ffffff"))
+        pen.setWidth(2)
+        p.setPen(pen)
+        p.setBrush(Qt.NoBrush)
+        p.drawRect(x, y, size, size)
+        p.end()
 
 # ---------------------------------------------------------------------------
 # QSS dos botões — usa objectName para máxima especificidade e vence o global
@@ -19,9 +61,9 @@ from ui.theme import C_BORDER
 
 _BTN_BASE = """
     QPushButton#{name} {{
-        background-color: #2e2e2e;
+        background-color: transparent;
         color: #ffffff;
-        border: 1px solid #505050;
+        border: none;
         border-radius: 7px;
         font-size: {fsize}px;
         font-weight: 900;
@@ -57,7 +99,14 @@ def _btn_qss(name: str, fsize: int, extra: str,
 # make_wm_buttons — container com minimizar + fechar
 # ---------------------------------------------------------------------------
 
-def make_wm_buttons(win: QWidget, *, show_minimize: bool = True) -> QWidget:
+def _toggle_fullscreen(win: QWidget) -> None:
+    if win.isFullScreen():
+        win.showNormal()
+    else:
+        win.showFullScreen()
+
+
+def make_wm_buttons(win: QWidget, *, show_minimize: bool = True, show_fullscreen: bool = True) -> QWidget:
     """
     Retorna um QWidget container com os botões de controle de janela.
     Conecta automaticamente minimize → win.showMinimized(), close → win.close().
@@ -65,6 +114,7 @@ def make_wm_buttons(win: QWidget, *, show_minimize: bool = True) -> QWidget:
     Args:
         win: a janela que será controlada (QMainWindow ou QDialog)
         show_minimize: False para dialogs que não precisam de minimizar
+        show_fullscreen: False para dialogs que não precisam de tela cheia
     """
     container = QWidget()
     container.setObjectName("wm_ctrl_box")
@@ -95,6 +145,13 @@ def make_wm_buttons(win: QWidget, *, show_minimize: bool = True) -> QWidget:
         ))
         btn_min.clicked.connect(win.showMinimized)
         lay.addWidget(btn_min)
+
+    if show_fullscreen:
+        btn_fs = _SquareIconButton()
+        btn_fs.setCursor(Qt.PointingHandCursor)
+        btn_fs.setToolTip("Tela cheia")
+        btn_fs.clicked.connect(lambda: _toggle_fullscreen(win))
+        lay.addWidget(btn_fs)
 
     btn_close = QPushButton("✕")
     btn_close.setObjectName("btn_close")
@@ -153,7 +210,7 @@ class _DraggableTitleBar(QWidget):
 
         lbl = QLabel(title)
         lbl.setStyleSheet(
-            "color: #9ca3af; font-size: 13px; font-weight: 600; letter-spacing: 0.5px;"
+            "color: #9ca3af; font-size: 13px; font-weight: 600;"
             "background: transparent; border: none;"
         )
         lay.addWidget(lbl)

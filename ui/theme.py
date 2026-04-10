@@ -26,7 +26,7 @@ C_RED_BG    = "#2a0a0a"
 # ---------------------------------------------------------------------------
 
 DARK_QSS = f"""
-* {{ font-family: 'Inter', 'Segoe UI', 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif; }}
+* {{ font-family: 'Times New Roman', 'Times', serif; letter-spacing: 0px; word-spacing: 0px; }}
 
 QMainWindow, QDialog, QWidget {{
     background-color: {C_BG};
@@ -114,7 +114,6 @@ QHeaderView::section {{
     padding: 12px 18px;
     font-size: 17px;
     font-weight: 600;
-    letter-spacing: 1px;
 }}
 
 QListWidget {{
@@ -126,13 +125,13 @@ QListWidget::item {{ padding: 15px 21px; border-bottom: 1px solid {C_BORDER}; co
 QListWidget::item:selected {{ background: {C_GREEN_BG}; color: {C_GREEN}; }}
 QListWidget::item:hover {{ background: {C_CARD2}; color: {C_TEXT}; }}
 
-QLabel#h1 {{ font-size: 42px; font-weight: 800; color: {C_TEXT}; }}
-QLabel#h2 {{ font-size: 30px; font-weight: 700; color: {C_TEXT}; }}
-QLabel#h3 {{ font-size: 22px; font-weight: 700; color: {C_TEXT}; }}
-QLabel#sub {{ font-size: 18px; color: {C_TEXT3}; }}
-QLabel#green {{ color: {C_GREEN}; font-weight: 700; }}
-QLabel#stat_val {{ font-size: 39px; font-weight: 800; color: {C_TEXT}; }}
-QLabel#stat_lbl {{ font-size: 17px; color: {C_TEXT3}; }}
+QLabel#h1 {{ font-size: 42px; font-weight: 800; color: {C_TEXT}; word-spacing: 0px; }}
+QLabel#h2 {{ font-size: 30px; font-weight: 700; color: {C_TEXT}; word-spacing: 0px; }}
+QLabel#h3 {{ font-size: 22px; font-weight: 700; color: {C_TEXT}; word-spacing: 0px; }}
+QLabel#sub {{ font-size: 18px; color: {C_TEXT3}; word-spacing: 0px; }}
+QLabel#green {{ color: {C_GREEN}; font-weight: 700; word-spacing: 0px; }}
+QLabel#stat_val {{ font-size: 39px; font-weight: 800; color: {C_TEXT}; word-spacing: 0px; font-family: 'Arial', sans-serif; }}
+QLabel#stat_lbl {{ font-size: 17px; color: {C_TEXT3}; word-spacing: 0px; }}
 
 QFrame#card {{
     background: {C_CARD};

@@ -51,7 +51,7 @@ class WorkoutsTab(QWidget):
         hdr.addStretch()
 
         # Botão + Cardio (avulso, fora do treino)
-        cardio_btn = QPushButton("🫀 Cardio")
+        cardio_btn = QPushButton("♡ Cardio")
         cardio_btn.setFixedHeight(38)
         cardio_btn.setStyleSheet(f"""
             QPushButton {{
@@ -77,7 +77,7 @@ class WorkoutsTab(QWidget):
 
         # ── Barra de pesquisa ─────────────────────────────────────────────
         search_row = QHBoxLayout()
-        search_icon = QLabel("🔍")
+        search_icon = QLabel("⌕")
         search_icon.setStyleSheet(f"color:{C_TEXT3}; font-size:14px; padding-right:4px;")
         self._search = QLineEdit()
         self._search.setPlaceholderText("Pesquisar treino...")
@@ -162,10 +162,10 @@ class WorkoutsTab(QWidget):
         )
         QMB.information(
             self, "Cardio Registrado",
-            f"✅ {data['cardio_type']}\n"
-            f"⏱ {int(data['duration_min'])} min"
+            f"✓ {data['cardio_type']}\n"
+            f"◷ {int(data['duration_min'])} min"
             + (f" · {data['distance_km']:.1f} km" if data.get("distance_km") else "")
-            + f"\n💪 PSE {data['pse']}/10",
+            + f"\n◈ PSE {data['pse']}/10",
         )
 
     # ------------------------------------------------------------------
