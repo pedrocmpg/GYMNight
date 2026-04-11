@@ -18,6 +18,7 @@ from ui.titlebar import make_wm_buttons
 from ui.screens.dashboard import DashboardTab
 from ui.screens.workouts import WorkoutsTab
 from ui.screens.active_workout import ActiveWorkoutScreen
+from ui.screens.results import ResultsTab
 
 
 # ---------------------------------------------------------------------------
@@ -211,12 +212,15 @@ class MainWindow(QMainWindow):
 
         self._btn_dash     = QPushButton("Início")
         self._btn_workouts = QPushButton("Treinos")
-        for btn in (self._btn_dash, self._btn_workouts):
+        self._btn_results  = QPushButton("Resultados")
+        for btn in (self._btn_dash, self._btn_workouts, self._btn_results):
             btn.setFixedHeight(34)
         self._btn_dash.clicked.connect(lambda: self._navigate(0))
         self._btn_workouts.clicked.connect(lambda: self._navigate(1))
+        self._btn_results.clicked.connect(lambda: self._navigate(3))
         self._titlebar.add_nav_button(self._btn_dash)
         self._titlebar.add_nav_button(self._btn_workouts)
+        self._titlebar.add_nav_button(self._btn_results)
 
         root.addWidget(self._titlebar)
 
@@ -226,10 +230,12 @@ class MainWindow(QMainWindow):
         self._dash_tab    = DashboardTab(self._db)
         self._workout_tab = WorkoutsTab(self._db, self._rm, self._norm)
         self._active_tab  = ActiveWorkoutScreen(self._db, self._rm, self._analyzer, self._norm)
+        self._results_tab = ResultsTab(self._db)
 
         self._stack.addWidget(self._dash_tab)    # 0
         self._stack.addWidget(self._workout_tab) # 1
         self._stack.addWidget(self._active_tab)  # 2
+        self._stack.addWidget(self._results_tab) # 3
 
         self._workout_tab.start_workout.connect(self._go_active)
         self._active_tab.finished.connect(self._go_workouts)
@@ -254,19 +260,24 @@ class MainWindow(QMainWindow):
         )
         self._btn_dash.setStyleSheet(active_style if idx == 0 else inactive_style)
         self._btn_workouts.setStyleSheet(active_style if idx == 1 else inactive_style)
+        self._btn_results.setStyleSheet(active_style if idx == 3 else inactive_style)
         if idx == 0:
             self._dash_tab.refresh()
+        if idx == 3:
+            self._results_tab.refresh()
         self._stack.setCurrentIndex(idx)
 
     def _go_active(self, routine: Routine, session_id: int):
         self._active_tab.load_routine(routine, session_id)
         self._btn_dash.setEnabled(False)
         self._btn_workouts.setEnabled(False)
+        self._btn_results.setEnabled(False)
         self._stack.setCurrentIndex(2)
 
     def _go_workouts(self, payload: dict = None):
         self._btn_dash.setEnabled(True)
         self._btn_workouts.setEnabled(True)
+        self._btn_results.setEnabled(True)
         self._workout_tab.reload()
         self._navigate(1)
 
