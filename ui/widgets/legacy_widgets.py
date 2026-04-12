@@ -1,6 +1,7 @@
 """
-ui/widgets.py
+ui/widgets/legacy_widgets.py
 Widgets reutilizáveis: StatCard, WeekDayDot, MuscleBar, RoutineCard.
+Migrado de ui/widgets.py para ui/widgets/ (pacote).
 """
 from __future__ import annotations
 
@@ -17,7 +18,6 @@ from ui.theme import (
     C_TEXT, C_TEXT2, C_TEXT3, card, label, separator, shadow,
     RADIUS_MD, RADIUS_LG,
 )
-
 
 
 # ---------------------------------------------------------------------------
@@ -84,27 +84,23 @@ class _LightningDot(QWidget):
         super().__init__(None)
 
     def paintEvent(self, _):
-        from PySide6.QtGui import QPainterPath, QBrush
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
         w, h = self.width(), self.height()
 
-        # Fundo arredondado verde
         p.setBrush(QBrush(QColor(C_GREEN)))
         p.setPen(Qt.NoPen)
         p.drawRoundedRect(0, 0, w, h, 10, 10)
 
-        # Raio (lightning bolt) em preto
         path = QPainterPath()
         cx, cy = w / 2, h / 2
-        # Pontos do raio escalados para o tamanho do widget
         s = min(w, h) * 0.55
-        path.moveTo(cx + s * 0.15,  cy - s * 0.5)   # topo direita
-        path.lineTo(cx - s * 0.05,  cy - s * 0.02)  # meio esquerda
-        path.lineTo(cx + s * 0.18,  cy - s * 0.02)  # meio direita
-        path.lineTo(cx - s * 0.15,  cy + s * 0.5)   # baixo esquerda
-        path.lineTo(cx + s * 0.05,  cy + s * 0.02)  # meio direita baixo
-        path.lineTo(cx - s * 0.18,  cy + s * 0.02)  # meio esquerda baixo
+        path.moveTo(cx + s * 0.15,  cy - s * 0.5)
+        path.lineTo(cx - s * 0.05,  cy - s * 0.02)
+        path.lineTo(cx + s * 0.18,  cy - s * 0.02)
+        path.lineTo(cx - s * 0.15,  cy + s * 0.5)
+        path.lineTo(cx + s * 0.05,  cy + s * 0.02)
+        path.lineTo(cx - s * 0.18,  cy + s * 0.02)
         path.closeSubpath()
 
         p.setBrush(QBrush(QColor("#000000")))
@@ -166,7 +162,6 @@ class RoutineCard(QFrame):
         self.setStyleSheet(f"QFrame#card {{ border: 1px solid #555555; border-radius: {RADIUS_LG}px; background: {C_CARD}; }}")
         shadow(self, blur=22, opacity=130, offset_y=4)
 
-        # Header
         hdr = QWidget()
         hdr.setMinimumHeight(72)
         hdr.setStyleSheet("background:transparent;")
@@ -191,7 +186,6 @@ class RoutineCard(QFrame):
         hdr_lay.addLayout(info)
         hdr_lay.addStretch()
 
-        # Botão Editar
         edit_btn = QPushButton()
         edit_btn.setIcon(qta.icon("fa5s.pen", color=C_TEXT3, options=[{"scale_factor": 0.6}]))
         edit_btn.setFixedSize(48, 48)
@@ -214,7 +208,6 @@ class RoutineCard(QFrame):
         hdr_lay.addWidget(edit_btn)
         hdr_lay.addSpacing(6)
 
-        # Botão Iniciar
         start_btn = QPushButton()
         start_btn.setIcon(qta.icon("fa5s.play", color="#000000", options=[{"scale_factor": 0.6}]))
         start_btn.setFixedSize(56, 48)
@@ -230,7 +223,6 @@ class RoutineCard(QFrame):
 
         self._root.addWidget(hdr)
 
-        # Conteúdo expansível
         self._content = QWidget()
         self._content.hide()
         c_lay = QVBoxLayout(self._content)

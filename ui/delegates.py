@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
 
 from engine import Exercise, NormalizationEngine
 from core.models import COL_EXERCISE, COL_WEIGHT, COL_REPS, COL_SET_TYPE, SuggestionRole, SET_TYPES
-from ui.theme import C_GREEN, C_CARD, C_CARD2, C_BORDER, C_BG, C_TEXT, C_TEXT2, C_TEXT3
+from ui.theme import C_GREEN, C_CARD, C_CARD2, C_BORDER, C_BG, C_TEXT, C_TEXT2, C_TEXT3, RADIUS_SM, RADIUS_MD
 
 
 # ---------------------------------------------------------------------------
@@ -164,7 +164,7 @@ class ExerciseSearchDelegate(QStyledItemDelegate):
             QListView {{
                 background: {C_CARD};
                 border: 1px solid {C_GREEN};
-                border-radius: 8px;
+                border-radius: {RADIUS_MD}px;
                 outline: none;
                 font-size: 13px;
             }}
@@ -198,7 +198,7 @@ class ExerciseSearchDelegate(QStyledItemDelegate):
         editor = QLineEdit(parent)
         editor.setStyleSheet(
             f"QLineEdit {{ background:{C_CARD}; color:{C_TEXT};"
-            f" border:1px solid {C_GREEN}; border-radius:6px;"
+            f" border:1px solid {C_GREEN}; border-radius:{RADIUS_SM}px;"
             " padding:4px 10px; font-size:13px; }}"
         )
         editor.setPlaceholderText("Digite para buscar...")
@@ -335,7 +335,7 @@ class SetTypeDelegate(QStyledItemDelegate):
         combo.setStyleSheet(f"""
             QComboBox {{
                 background:{C_CARD}; color:#e0e0e0;
-                border:1px solid {C_GREEN}; border-radius:6px;
+                border:1px solid {C_GREEN}; border-radius:{RADIUS_SM}px;
                 padding:4px 8px; font-size:12px; font-weight:600;
             }}
             QComboBox QAbstractItemView {{

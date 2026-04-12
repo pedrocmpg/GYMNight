@@ -4,15 +4,16 @@ Diálogo para editar nome e exercícios de uma rotina existente.
 """
 from __future__ import annotations
 
+import qtawesome as qta
 from PySide6.QtCore import Qt, QPoint
 from PySide6.QtWidgets import (
-    QDialog, QDialogButtonBox, QFrame, QHBoxLayout,
+    QDialog, QFrame, QHBoxLayout,
     QLabel, QLineEdit, QListWidget, QListWidgetItem,
     QMessageBox, QPushButton, QVBoxLayout,
 )
 
 from engine import NormalizationEngine, Routine, RoutineManager
-from ui.theme import C_BORDER, C_GREEN, C_GREEN_BG, C_RED, C_TEXT, C_TEXT2, C_TEXT3, label, separator
+from ui.theme import C_BORDER, C_GREEN, C_GREEN_BG, C_RED, C_TEXT, C_TEXT2, C_TEXT3, label, separator, RADIUS_MD
 from ui.dialogs import FramelessDialog
 
 
@@ -52,7 +53,8 @@ class EditRoutineDialog(FramelessDialog):
         self._search.setPlaceholderText("Buscar exercício para adicionar...")
         self._search.returnPressed.connect(self._add_exercise)
         self._search.textChanged.connect(self._on_search_changed)
-        add_btn = QPushButton("＋ Adicionar")
+        add_btn = QPushButton(" Adicionar")
+        add_btn.setIcon(qta.icon("fa5s.plus", color="#000000"))
         add_btn.setFixedHeight(38)
         add_btn.clicked.connect(self._add_exercise)
         search_row.addWidget(self._search)
@@ -68,7 +70,7 @@ class EditRoutineDialog(FramelessDialog):
             QListWidget {{
                 background: #1e1e1e;
                 border: 1px solid {C_GREEN};
-                border-radius: 8px;
+                border-radius: {RADIUS_MD}px;
                 font-size: 14px;
             }}
             QListWidget::item {{ padding: 8px 12px; color: {C_TEXT2}; }}
@@ -84,16 +86,53 @@ class EditRoutineDialog(FramelessDialog):
         lay.addWidget(self._list)
 
         # Botão remover
-        remove_btn = QPushButton("⊘ Remover Selecionado")
+        remove_btn = QPushButton(" Remover Selecionado")
+        remove_btn.setIcon(qta.icon("fa5s.trash", color="#ffffff"))
         remove_btn.setObjectName("danger")
         remove_btn.clicked.connect(self._remove_selected)
         lay.addWidget(remove_btn)
 
         # Confirmar / Cancelar
-        btns = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
-        btns.accepted.connect(self._save)
-        btns.rejected.connect(self.reject)
-        lay.addWidget(btns)
+        footer = QHBoxLayout()
+        footer.setSpacing(10)
+
+        btn_cancel = QPushButton(" Cancelar")
+        btn_cancel.setIcon(qta.icon("fa5s.times", color=C_TEXT2))
+        btn_cancel.setFixedHeight(36)
+        btn_cancel.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent;
+                color: {C_TEXT2};
+                border: 1px solid {C_BORDER};
+                border-radius: {RADIUS_MD}px;
+                padding: 0 16px;
+                font-size: 13px;
+            }}
+            QPushButton:hover {{ background: {C_BORDER}; }}
+        """)
+        btn_cancel.clicked.connect(self.reject)
+
+        btn_save = QPushButton(" Salvar")
+        btn_save.setIcon(qta.icon("fa5s.save", color="#000000"))
+        btn_save.setFixedHeight(36)
+        btn_save.setStyleSheet(f"""
+            QPushButton {{
+                background: {C_GREEN};
+                color: #000000;
+                border: none;
+                border-radius: {RADIUS_MD}px;
+                padding: 0 20px;
+                font-size: 13px;
+                font-weight: 700;
+            }}
+            QPushButton:hover {{ background: #bef264; }}
+        """)
+        btn_save.clicked.connect(self._save)
+
+        footer.addStretch()
+        footer.addWidget(btn_cancel)
+        footer.addWidget(btn_save)
+        lay.addLayout(footer)
 
     def _load_current(self):
         """Preenche o diálogo com os dados atuais da rotina."""

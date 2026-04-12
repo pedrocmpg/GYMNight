@@ -5,6 +5,7 @@ Diálogos modais: CreateWorkoutDialog com autocomplete de exercícios.
 from __future__ import annotations
 import unicodedata
 
+import qtawesome as qta
 from PySide6.QtCore import Qt, QPoint
 from PySide6.QtGui import QStandardItem, QStandardItemModel
 from PySide6.QtWidgets import (
@@ -13,7 +14,7 @@ from PySide6.QtWidgets import (
 )
 
 from engine import NormalizationEngine
-from ui.theme import C_BORDER, C_CARD, C_CARD2, C_GREEN, C_TEXT, C_TEXT2, label, separator
+from ui.theme import C_BORDER, C_CARD, C_CARD2, C_GREEN, C_TEXT, C_TEXT2, label, separator, RADIUS_MD, RADIUS_LG
 from ui.titlebar import build_dialog_titlebar
 
 
@@ -48,8 +49,8 @@ class FramelessDialog(QDialog):
         self._content_w = QWidget()
         self._content_w.setStyleSheet(
             "background: #242424;"
-            "border-bottom-left-radius: 14px;"
-            "border-bottom-right-radius: 14px;"
+            f"border-bottom-left-radius: {RADIUS_LG}px;"
+            f"border-bottom-right-radius: {RADIUS_LG}px;"
         )
         self._content_lay = QVBoxLayout(self._content_w)
         self._content_lay.setContentsMargins(24, 20, 24, 24)
@@ -57,7 +58,7 @@ class FramelessDialog(QDialog):
         root.addWidget(self._content_w)
 
         self.setStyleSheet(
-            f"QDialog {{ border: 1px solid {C_BORDER}; border-radius: 14px; }}"
+            f"QDialog {{ border: 1px solid {C_BORDER}; border-radius: {RADIUS_LG}px; }}"
         )
 
     def content_layout(self) -> QVBoxLayout:
@@ -118,7 +119,7 @@ class ExerciseLineEdit(QLineEdit):
             QListView {{
                 background: {C_CARD};
                 border: 1px solid {C_GREEN};
-                border-radius: 8px;
+                border-radius: {RADIUS_MD}px;
                 outline: none;
                 font-size: 13px;
                 padding: 4px;
@@ -216,12 +217,14 @@ class CreateWorkoutDialog(FramelessDialog):
         self._form_lay.addLayout(self._ex_container)
         self._add_exercise_block()
 
-        add_ex = QPushButton("＋ Adicionar exercício")
+        add_ex = QPushButton(" Adicionar exercício")
+        add_ex.setIcon(qta.icon("fa5s.plus", color=C_TEXT2, options=[{"scale_factor": 0.6}]))
         add_ex.setObjectName("ghost")
         add_ex.clicked.connect(self._add_exercise_block)
         self._form_lay.addWidget(add_ex)
 
-        save = QPushButton("💾 Salvar Treino")
+        save = QPushButton(" Salvar Treino")
+        save.setIcon(qta.icon("fa5s.save", color="#000000"))
         save.setMinimumHeight(44)
         save.clicked.connect(self.accept)
         lay.addWidget(save)

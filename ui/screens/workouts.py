@@ -4,6 +4,7 @@ Tela de Treinos: barra de pesquisa, lista de rotinas, botão + Cardio avulso.
 """
 from __future__ import annotations
 
+import qtawesome as qta
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QDialog, QDoubleSpinBox, QFrame, QHBoxLayout, QLabel, QLineEdit,
@@ -17,6 +18,7 @@ from ui.dialogs import ExerciseLineEdit
 from ui.theme import (
     C_BORDER, C_CARD, C_CARD2, C_GREEN, C_GREEN_BG,
     C_TEXT, C_TEXT2, C_TEXT3, label, separator,
+    RADIUS_MD, RADIUS_SM,
 )
 from ui.widgets import RoutineCard
 
@@ -59,14 +61,15 @@ class WorkoutsTab(QWidget):
         hdr.addLayout(left)
         hdr.addStretch()
 
-        cardio_btn = QPushButton("♡ Cardio")
+        cardio_btn = QPushButton(" Cardio")
+        cardio_btn.setIcon(qta.icon("fa5s.heart", color=C_GREEN))
         cardio_btn.setFixedHeight(38)
         cardio_btn.setStyleSheet(f"""
             QPushButton {{
                 background: transparent;
                 color: {C_GREEN};
                 border: 1px solid {C_GREEN};
-                border-radius: 8px;
+                border-radius: {RADIUS_MD}px;
                 padding: 0 16px;
                 font-weight: 700;
                 font-size: 13px;
@@ -77,7 +80,8 @@ class WorkoutsTab(QWidget):
         cardio_btn.clicked.connect(self._open_cardio)
         hdr.addWidget(cardio_btn)
 
-        new_btn = QPushButton("＋ Novo Treino")
+        new_btn = QPushButton(" Novo Treino")
+        new_btn.setIcon(qta.icon("fa5s.plus", color="#000000"))
         new_btn.setFixedHeight(38)
         new_btn.clicked.connect(self._show_create_form)
         hdr.addWidget(new_btn)
@@ -91,7 +95,7 @@ class WorkoutsTab(QWidget):
                 background: {C_CARD};
                 color: {C_TEXT};
                 border: 1px solid {C_BORDER};
-                border-radius: 10px;
+                border-radius: {RADIUS_MD}px;
                 padding: 0 14px 0 36px;
                 font-size: 13px;
             }}
@@ -176,7 +180,7 @@ class WorkoutsTab(QWidget):
                 background: {C_CARD};
                 color: {C_TEXT};
                 border: 1px solid {C_GREEN};
-                border-radius: 10px;
+                border-radius: {RADIUS_MD}px;
                 padding: 0 14px;
                 font-size: 13px;
             }}
@@ -191,7 +195,7 @@ class WorkoutsTab(QWidget):
             QListWidget {{
                 background: {C_CARD};
                 border: 1px solid {C_GREEN};
-                border-radius: 8px;
+                border-radius: {RADIUS_MD}px;
                 outline: none;
                 font-size: 13px;
             }}
@@ -257,14 +261,14 @@ class WorkoutsTab(QWidget):
         self._cardio_pse.setTickInterval(1)
         self._cardio_pse.setStyleSheet(f"""
             QSlider::groove:horizontal {{
-                height: 6px; background: {C_CARD2}; border-radius: 3px;
+                height: 6px; background: {C_CARD2}; border-radius: {RADIUS_SM}px;
             }}
             QSlider::handle:horizontal {{
                 background: {C_GREEN}; width: 18px; height: 18px;
                 margin: -6px 0; border-radius: 9px;
             }}
             QSlider::sub-page:horizontal {{
-                background: {C_GREEN}; border-radius: 3px;
+                background: {C_GREEN}; border-radius: {RADIUS_SM}px;
             }}
         """)
         self._cardio_pse_lbl = QLabel("5")
@@ -380,7 +384,7 @@ class WorkoutsTab(QWidget):
         page = QWidget()
         outer = QVBoxLayout(page)
         outer.setContentsMargins(24, 24, 24, 24)
-        outer.setSpacing(16)
+        outer.setSpacing(8)
 
         # Cabeçalho com botão voltar
         hdr = QHBoxLayout()
@@ -401,7 +405,7 @@ class WorkoutsTab(QWidget):
         scroll.setFrameShape(QFrame.NoFrame)
         form_w = QWidget()
         self._form_lay = QVBoxLayout(form_w)
-        self._form_lay.setSpacing(14)
+        self._form_lay.setSpacing(4)
         scroll.setWidget(form_w)
         outer.addWidget(scroll)
 
@@ -413,11 +417,13 @@ class WorkoutsTab(QWidget):
 
         # Dia + Músculos
         row = QHBoxLayout()
+        row.setSpacing(12)
         for attr, lbl_txt, ph in [
             ("_days",    "Dia(s)",    "Ex: Segunda"),
             ("_muscles", "Músculos",  "Ex: Ombro & Trapézio"),
         ]:
             col = QVBoxLayout()
+            col.setSpacing(4)
             col.addWidget(label(lbl_txt, "h3"))
             edit = QLineEdit()
             edit.setPlaceholderText(ph)
@@ -434,12 +440,14 @@ class WorkoutsTab(QWidget):
         self._form_lay.addLayout(self._ex_container)
         self._add_exercise_block()
 
-        add_ex = QPushButton("＋ Adicionar exercício")
+        add_ex = QPushButton(" Adicionar exercício")
+        add_ex.setIcon(qta.icon("fa5s.plus", color=C_TEXT2, options=[{"scale_factor": 0.6}]))
         add_ex.setObjectName("ghost")
         add_ex.clicked.connect(self._add_exercise_block)
         self._form_lay.addWidget(add_ex)
 
-        save = QPushButton("💾 Salvar Treino")
+        save = QPushButton(" Salvar Treino")
+        save.setIcon(qta.icon("fa5s.save", color="#000000"))
         save.setMinimumHeight(44)
         save.clicked.connect(self._save_workout)
         outer.addWidget(save)

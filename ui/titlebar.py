@@ -8,11 +8,12 @@ Exporta:
 """
 from __future__ import annotations
 
+import qtawesome as qta
 from PySide6.QtCore import QPoint, Qt
 from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QWidget
 
-from ui.theme import C_BORDER
+from ui.theme import C_BORDER, RADIUS_SM, RADIUS_MD, RADIUS_LG
 
 
 # ---------------------------------------------------------------------------
@@ -135,7 +136,8 @@ def make_wm_buttons(win: QWidget, *, show_minimize: bool = True, show_fullscreen
     lay.setSpacing(4)
 
     if show_minimize:
-        btn_min = QPushButton("—")
+        btn_min = QPushButton()
+        btn_min.setIcon(qta.icon("fa5s.minus", color="#ffffff", options=[{"scale_factor": 0.6}]))
         btn_min.setObjectName("btn_minimize")
         btn_min.setCursor(Qt.PointingHandCursor)
         btn_min.setStyleSheet(_btn_qss(
@@ -157,7 +159,8 @@ def make_wm_buttons(win: QWidget, *, show_minimize: bool = True, show_fullscreen
         btn_fs.clicked.connect(lambda: _toggle_fullscreen(win))
         lay.addWidget(btn_fs)
 
-    btn_close = QPushButton("✕")
+    btn_close = QPushButton()
+    btn_close.setIcon(qta.icon("fa5s.times", color="#ffffff", options=[{"scale_factor": 0.6}]))
     btn_close.setObjectName("btn_close")
     btn_close.setCursor(Qt.PointingHandCursor)
     btn_close.setStyleSheet(_btn_qss(

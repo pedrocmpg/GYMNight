@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
 from ui.theme import (
     C_BORDER, C_CARD, C_CARD2, C_GREEN, C_GREEN_BG,
     C_TEXT, C_TEXT2, C_TEXT3, label, separator,
+    RADIUS_SM, RADIUS_MD, RADIUS_LG,
 )
 
 
@@ -91,15 +92,15 @@ class CardioPickerDialog(QDialog):
         content = QWidget()
         content.setStyleSheet(
             "background: #242424;"
-            "border-bottom-left-radius: 14px;"
-            "border-bottom-right-radius: 14px;"
+            f"border-bottom-left-radius: {RADIUS_LG}px;"
+            f"border-bottom-right-radius: {RADIUS_LG}px;"
         )
         lay = QVBoxLayout(content)
         lay.setContentsMargins(24, 20, 24, 24)
         lay.setSpacing(14)
         root.addWidget(content)
 
-        self.setStyleSheet(f"QDialog {{ border: 1px solid {C_BORDER}; border-radius: 14px; }}")
+        self.setStyleSheet(f"QDialog {{ border: 1px solid {C_BORDER}; border-radius: {RADIUS_LG}px; }}")
 
         # Campo de busca com popup de lista
         lay.addWidget(label("Tipo de Cardio", "h3"))
@@ -111,7 +112,7 @@ class CardioPickerDialog(QDialog):
                 background: {C_CARD};
                 color: {C_TEXT};
                 border: 1px solid {C_GREEN};
-                border-radius: 10px;
+                border-radius: {RADIUS_MD}px;
                 padding: 0 14px;
                 font-size: 13px;
             }}
@@ -126,7 +127,7 @@ class CardioPickerDialog(QDialog):
             QListWidget {{
                 background: {C_CARD};
                 border: 1px solid {C_GREEN};
-                border-radius: 8px;
+                border-radius: {RADIUS_MD}px;
                 outline: none;
                 font-size: 13px;
             }}
@@ -199,7 +200,7 @@ class CardioPickerDialog(QDialog):
             QSlider::groove:horizontal {{
                 height: 6px;
                 background: {C_CARD2};
-                border-radius: 3px;
+                border-radius: {RADIUS_SM}px;
             }}
             QSlider::handle:horizontal {{
                 background: {C_GREEN};
@@ -209,7 +210,7 @@ class CardioPickerDialog(QDialog):
             }}
             QSlider::sub-page:horizontal {{
                 background: {C_GREEN};
-                border-radius: 3px;
+                border-radius: {RADIUS_SM}px;
             }}
         """)
         self._pse_lbl = QLabel("5")
@@ -336,7 +337,7 @@ class CardioRow(QFrame):
             QFrame#card {{
                 background: {C_GREEN_BG};
                 border: 1px solid {C_GREEN};
-                border-radius: 10px;
+                border-radius: {RADIUS_MD}px;
             }}
         """)
         self._build()

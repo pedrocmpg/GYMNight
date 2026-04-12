@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 
 from database import DatabaseConnection, seed_muscle_map
 from engine import NormalizationEngine, PerformanceAnalyzer, Routine, RoutineManager
-from ui.theme import C_BORDER, C_GREEN, C_SURFACE, C_TEXT2
+from ui.theme import C_BORDER, C_GREEN, C_SURFACE, C_TEXT2, RADIUS_MD
 from ui.titlebar import make_wm_buttons
 from ui.screens.dashboard import DashboardTab
 from ui.screens.workouts import WorkoutsTab
@@ -252,11 +252,11 @@ class MainWindow(QMainWindow):
     def _navigate(self, idx: int):
         active_style = (
             f"background:{C_GREEN}; color:#000; border:none;"
-            f" border-radius:8px; padding:0 14px; font-weight:700;"
+            f" border-radius:{RADIUS_MD}px; padding:0 14px; font-weight:700;"
         )
         inactive_style = (
             f"background:transparent; color:{C_TEXT2};"
-            f" border:1px solid {C_BORDER}; border-radius:8px; padding:0 14px;"
+            f" border:1px solid {C_BORDER}; border-radius:{RADIUS_MD}px; padding:0 14px;"
         )
         self._btn_dash.setStyleSheet(active_style if idx == 0 else inactive_style)
         self._btn_workouts.setStyleSheet(active_style if idx == 1 else inactive_style)

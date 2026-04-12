@@ -4,6 +4,7 @@ Tela de Treino Ativo: força + cardio, tabs por exercício, card de séries.
 """
 from __future__ import annotations
 
+import qtawesome as qta
 from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtWidgets import (
     QComboBox, QDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
@@ -15,8 +16,10 @@ from engine import Exercise, NormalizationEngine, PerformanceAnalyzer, Routine, 
 from ui.theme import (
     C_BORDER, C_CARD, C_CARD2, C_GREEN, C_GREEN_BG,
     C_TEXT, C_TEXT2, C_TEXT3, label, separator,
+    RADIUS_SM, RADIUS_MD, RADIUS_LG,
 )
 from ui.screens.cardio_widget import CardioPickerDialog, CardioRow
+from ui.widgets.set_indicator import SetIndicatorWidget
 from core.models import SET_TYPES
 
 
@@ -55,7 +58,8 @@ class ActiveWorkoutScreen(QWidget):
 
         # Header
         hdr = QHBoxLayout()
-        back_btn = QPushButton("← Voltar")
+        back_btn = QPushButton(" Voltar")
+        back_btn.setIcon(qta.icon("fa5s.arrow-left", color=C_TEXT2))
         back_btn.setObjectName("ghost")
         back_btn.setFixedWidth(90)
         back_btn.clicked.connect(self._confirm_back)
@@ -67,6 +71,10 @@ class ActiveWorkoutScreen(QWidget):
 
         self._title = label("TREINO", "h1")
         lay.addWidget(self._title)
+
+        # Indicador de séries do exercício atual
+        self._set_indicator = SetIndicatorWidget(sets_total=4, sets_done=0)
+        lay.addWidget(self._set_indicator)
 
         # Carregar Rotina
         load_row = QHBoxLayout()
@@ -85,10 +93,10 @@ class ActiveWorkoutScreen(QWidget):
         # Barra de progresso
         self._prog_bar = QFrame()
         self._prog_bar.setFixedHeight(4)
-        self._prog_bar.setStyleSheet(f"background:{C_BORDER}; border-radius:2px;")
+        self._prog_bar.setStyleSheet(f"background:{C_BORDER}; border-radius:{RADIUS_SM}px;")
         self._prog_fill = QFrame(self._prog_bar)
         self._prog_fill.setFixedHeight(4)
-        self._prog_fill.setStyleSheet(f"background:{C_GREEN}; border-radius:2px;")
+        self._prog_fill.setStyleSheet(f"background:{C_GREEN}; border-radius:{RADIUS_SM}px;")
         self._prog_fill.setFixedWidth(0)
         lay.addWidget(self._prog_bar)
 
@@ -118,7 +126,7 @@ class ActiveWorkoutScreen(QWidget):
         self._ex_icon = QLabel("◈")
         self._ex_icon.setFixedSize(44, 44)
         self._ex_icon.setAlignment(Qt.AlignCenter)
-        self._ex_icon.setStyleSheet(f"background:{C_GREEN_BG}; border-radius:10px; font-size:20px;")
+        self._ex_icon.setStyleSheet(f"background:{C_GREEN_BG}; border-radius:{RADIUS_MD}px; font-size:20px;")
         card_hdr.addWidget(self._ex_icon)
         card_hdr.addSpacing(12)
 
@@ -151,14 +159,15 @@ class ActiveWorkoutScreen(QWidget):
         cardio_title = label("CARDIO", "h3")
         cardio_hdr.addWidget(cardio_title)
         cardio_hdr.addStretch()
-        add_cardio_btn = QPushButton("♡ Cardio")
+        add_cardio_btn = QPushButton(" Cardio")
+        add_cardio_btn.setIcon(qta.icon("fa5s.heartbeat", color=C_GREEN))
         add_cardio_btn.setFixedHeight(34)
         add_cardio_btn.setStyleSheet(f"""
             QPushButton {{
                 background: transparent;
                 color: {C_GREEN};
                 border: 1px solid {C_GREEN};
-                border-radius: 8px;
+                border-radius: {RADIUS_MD}px;
                 padding: 0 14px;
                 font-weight: 700;
                 font-size: 12px;
@@ -188,12 +197,15 @@ class ActiveWorkoutScreen(QWidget):
         nav.setContentsMargins(24, 10, 24, 10)
         nav.setSpacing(12)
 
-        self._prev_btn = QPushButton("← Anterior")
+        self._prev_btn = QPushButton(" Anterior")
+        self._prev_btn.setIcon(qta.icon("fa5s.arrow-left", color=C_TEXT3))
         self._prev_btn.setObjectName("ghost")
         self._prev_btn.setMinimumHeight(44)
         self._prev_btn.clicked.connect(self._prev)
 
-        self._next_btn = QPushButton("Próximo →")
+        self._next_btn = QPushButton("Próximo ")
+        self._next_btn.setIcon(qta.icon("fa5s.arrow-right", color="#ffffff"))
+        self._next_btn.setLayoutDirection(Qt.RightToLeft)
         self._next_btn.setMinimumHeight(44)
         self._next_btn.clicked.connect(self._next)
 
@@ -316,7 +328,7 @@ class ActiveWorkoutScreen(QWidget):
             btn.setStyleSheet(f"""
                 QPushButton {{
                     background:{C_CARD}; color:{C_TEXT3};
-                    border:1px solid {C_BORDER}; border-radius:17px;
+                    border:1px solid {C_BORDER}; border-radius:{RADIUS_LG}px;
                     padding:0 14px; font-size:12px; font-weight:600;
                 }}
                 QPushButton:checked {{
@@ -343,6 +355,7 @@ class ActiveWorkoutScreen(QWidget):
         series = self._series_data[idx]
         done = sum(1 for s in series if s["done"])
         self._ex_prog_lbl.setText(f"{done}/{len(series)}")
+        self._set_indicator.update_state(len(series), done)
 
         while self._series_container.count():
             item = self._series_container.takeAt(0)
@@ -357,7 +370,7 @@ class ActiveWorkoutScreen(QWidget):
                     background: {C_CARD2};
                     color: {C_TEXT};
                     border: 1px solid {C_BORDER};
-                    border-radius: 8px;
+                    border-radius: {RADIUS_MD}px;
                     padding: 6px 10px;
                     font-size: 13px;
                 }}
@@ -366,7 +379,7 @@ class ActiveWorkoutScreen(QWidget):
                     background: {C_CARD2};
                     color: {C_TEXT2};
                     border: 1px solid {C_BORDER};
-                    border-radius: 8px;
+                    border-radius: {RADIUS_MD}px;
                     padding: 4px 8px;
                     font-size: 11px;
                     font-weight: 600;
@@ -406,8 +419,8 @@ class ActiveWorkoutScreen(QWidget):
             )
             row_lay.addWidget(type_combo, 2)
 
-            check = QPushButton("✔")
-            check.setFixedSize(40, 40)
+            check = QPushButton()
+            check.setFixedSize(48, 48)
             check.setCheckable(True)
             check.setChecked(s["done"])
             self._style_check(check, s["done"])
@@ -418,13 +431,21 @@ class ActiveWorkoutScreen(QWidget):
 
         self._update_progress()
         self._prev_btn.setEnabled(idx > 0)
-        self._next_btn.setText("✔ Finalizar" if idx == len(self._exercises) - 1 else "Próximo →")
+        self._next_btn.setText(" Finalizar" if idx == len(self._exercises) - 1 else "Próximo ")
+        if idx == len(self._exercises) - 1:
+            self._next_btn.setIcon(qta.icon("fa5s.flag-checkered", color="#000000"))
+            self._next_btn.setLayoutDirection(Qt.LeftToRight)
+        else:
+            self._next_btn.setIcon(qta.icon("fa5s.arrow-right", color="#ffffff"))
+            self._next_btn.setLayoutDirection(Qt.RightToLeft)
 
     def _style_check(self, btn: QPushButton, done: bool):
         if done:
-            btn.setStyleSheet(f"background:{C_GREEN}; color:#000; border-radius:10px; font-size:16px; font-weight:700; border:none;")
+            btn.setIcon(qta.icon("fa5s.check", color="#000000"))
+            btn.setStyleSheet(f"background:{C_GREEN}; border-radius:{RADIUS_MD}px; border:none;")
         else:
-            btn.setStyleSheet(f"background:{C_CARD2}; color:{C_TEXT3}; border-radius:10px; font-size:16px; border:1px solid {C_BORDER};")
+            btn.setIcon(qta.icon("fa5s.check", color=C_TEXT3))
+            btn.setStyleSheet(f"background:{C_CARD2}; border-radius:{RADIUS_MD}px; border:1px solid {C_BORDER};")
 
     def _update(self, ex_idx: int, s_idx: int, key: str, val: str):
         self._series_data[ex_idx][s_idx][key] = val
@@ -435,6 +456,7 @@ class ActiveWorkoutScreen(QWidget):
         series = self._series_data[ex_idx]
         done = sum(1 for s in series if s["done"])
         self._ex_prog_lbl.setText(f"{done}/{len(series)}")
+        self._set_indicator.update_state(len(series), done)
         self._update_progress()
         if checked and self._session_id:
             s = self._series_data[ex_idx][s_idx]

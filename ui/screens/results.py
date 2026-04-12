@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 )
 
 from database import DatabaseConnection
-from ui.theme import C_BORDER, C_CARD, C_GREEN, C_TEXT, C_TEXT2, C_TEXT3, label
+from ui.theme import C_BORDER, C_CARD, C_GREEN, C_TEXT, C_TEXT2, C_TEXT3, label, RADIUS_MD, RADIUS_SM
 
 
 # Paleta de cores alinhada ao tema escuro
@@ -52,7 +52,7 @@ class _ChartCard(QWidget):
         super().__init__(parent)
         self.setStyleSheet(
             f"QWidget {{ background:{_CARD_BG}; border:1px solid {C_BORDER};"
-            "border-radius:12px; }"
+            f"border-radius:{RADIUS_MD}px; }}"
         )
         lay = QVBoxLayout(self)
         lay.setContentsMargins(16, 14, 16, 14)
@@ -61,7 +61,7 @@ class _ChartCard(QWidget):
         lbl = QLabel(title)
         lbl.setStyleSheet(
             f"color:#ffffff; font-size:13px; font-weight:700;"
-            "background:transparent; border:none; border-radius:0px;"
+            "background:transparent; border:none; border-radius:0;"
         )
         lay.addWidget(lbl)
 
@@ -70,7 +70,7 @@ class _ChartCard(QWidget):
         self.ax  = self.fig.add_subplot(111)
         self.canvas = FigureCanvas(self.fig)
         self.canvas.setStyleSheet(
-            "background:transparent; border:none; border-radius:0px;"
+            "background:transparent; border:none; border-radius:0;"
         )
         lay.addWidget(self.canvas)
 
@@ -121,7 +121,7 @@ class ResultsTab(QWidget):
         self._period_combo.setFixedWidth(110)
         self._period_combo.setStyleSheet(
             f"background:{_CARD_BG}; color:#ffffff; border:1px solid {C_BORDER};"
-            "border-radius:8px; padding:4px 10px; font-size:12px;"
+            f"border-radius:{RADIUS_MD}px; padding:4px 10px; font-size:12px;"
         )
         self._period_combo.currentIndexChanged.connect(self.refresh)
         header.addWidget(self._period_combo)

@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from database import DatabaseConnection
-from ui.theme import C_BORDER, C_CARD, C_GREEN, C_TEXT, C_TEXT3, card, label, separator
+from ui.theme import C_BORDER, C_CARD, C_GREEN, C_TEXT, C_TEXT3, card, label, separator, shadow
 from ui.widgets import StatCard, WeekDayDot
 
 
@@ -26,14 +26,7 @@ class _HeroBanner(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._pixmap = QPixmap(self._IMG_PATH)
-        # Sombra externa via QGraphicsDropShadowEffect
-        from PySide6.QtWidgets import QGraphicsDropShadowEffect
-        from PySide6.QtGui import QColor
-        shadow = QGraphicsDropShadowEffect(self)
-        shadow.setBlurRadius(32)
-        shadow.setOffset(0, 6)
-        shadow.setColor(QColor(0, 0, 0, 160))
-        self.setGraphicsEffect(shadow)
+        shadow(self, blur=32, opacity=160, offset_y=6)
 
     def paintEvent(self, event):
         from PySide6.QtGui import QPainterPath, QColor
@@ -127,9 +120,17 @@ class DashboardTab(QWidget):
         act_lay.addWidget(label("ATIVIDADE SEMANAL", "h3"))
         days_row = QHBoxLayout()
         days_row.setSpacing(8)
-        today = datetime.datetime.now().weekday()
+        # Dias com treino na semana atual (0=dom, 1=seg, ..., 6=sáb)
+        active_rows = self._db.fetchall(
+            "SELECT CAST(strftime('%w', datetime(started_at, 'unixepoch')) AS INTEGER) AS dow "
+            "FROM workout_sessions "
+            "WHERE started_at >= strftime('%s', 'now', 'weekday 0', '-7 days')"
+        )
+        active_dow = {r["dow"] for r in active_rows} if active_rows else set()
+        # Mapeamento: índice do loop (0=Seg … 6=Dom) → dow do SQLite (1=Seg … 0=Dom)
+        loop_to_dow = [1, 2, 3, 4, 5, 6, 0]
         for i, d in enumerate(["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]):
-            days_row.addWidget(WeekDayDot(d, i <= today))
+            days_row.addWidget(WeekDayDot(d, loop_to_dow[i] in active_dow))
         act_lay.addLayout(days_row)
         lay.addWidget(act_card)
 

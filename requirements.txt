@@ -5,3 +5,4 @@ sqlalchemy==2.0.27
 loguru
 python-dotenv
 matplotlib
+qtawesome

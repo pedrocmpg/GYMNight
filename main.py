@@ -17,7 +17,6 @@ def main():
     from PySide6.QtGui import QFont, QFontDatabase
 
     font = QFont("Segoe UI")
-    font.setPixelSize(16)
     font.setWeight(QFont.Medium)
     font.setWordSpacing(0)
     font.setLetterSpacing(QFont.AbsoluteSpacing, 0)
