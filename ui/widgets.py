@@ -27,9 +27,8 @@ from ui.theme import (
 class StatCard(QFrame):
     def __init__(self, icon: str, title: str, value: str, sub: str = "", parent=None):
         super().__init__(parent)
-        self.setObjectName("card")
+        self.setObjectName("stat_card_container")
         self.setMinimumWidth(160)
-        self.setStyleSheet(f"QFrame#card {{ border: 1px solid #555555; border-radius: {RADIUS_LG}px; background: {C_CARD}; }}")
         shadow(self, blur=22, opacity=130, offset_y=4)
         lay = QVBoxLayout(self)
         lay.setContentsMargins(16, 16, 16, 16)

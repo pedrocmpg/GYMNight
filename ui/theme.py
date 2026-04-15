@@ -7,10 +7,11 @@ Paleta de cores e QSS global do GYMNight.
 # Paleta – hierarquia de superfície
 # ---------------------------------------------------------------------------
 
-C_BG            = "#181818"
-C_SURFACE       = "#1e1e1e"
-C_CARD          = "#242424"
-C_CARD2         = "#2c2c2c"
+C_BG            = "#121212"   # fundo da janela — mais escuro
+C_SURFACE       = "#161616"   # superfície principal
+C_CARD          = "#1e1e1e"   # cards gerais — visivelmente mais claro que o fundo
+C_STAT_CARD     = "#1e1e1e"   # stat cards — cor própria, independente do fundo
+C_CARD2         = "#272727"   # hover e inputs dentro dos cards
 
 C_BORDER        = "#383838"
 
@@ -46,14 +47,23 @@ DARK_QSS = f"""
     word-spacing: 0px;
 }}
 
-QMainWindow, QDialog, QWidget {{
+QMainWindow, QDialog {{
     background-color: {C_BG};
     color: {C_TEXT};
     font-size: 15px;
 }}
 
+QWidget {{
+    color: {C_TEXT};
+    font-size: 15px;
+}}
+
 QMainWindow {{
-    background-color: transparent;
+    background-color: {C_BG};
+}}
+
+QScrollArea > QWidget > QWidget {{
+    background-color: {C_BG};
 }}
 
 /* ── Tabs ─────────────────────────────────────────────────────────────── */
@@ -166,6 +176,11 @@ QLabel#stat_lbl {{ font-size: 13px; color: {C_TEXT3}; }}
 QFrame#card {{
     background: {C_CARD};
     border: 2px solid #555555;
+    border-radius: {RADIUS_LG}px;
+}}
+QFrame#stat_card_container {{
+    background: {C_STAT_CARD};
+    border: 1px solid #555555;
     border-radius: {RADIUS_LG}px;
 }}
 QFrame#sep {{
