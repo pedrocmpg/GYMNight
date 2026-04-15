@@ -1,41 +1,76 @@
 """
 ui/screens/edit_routine_dialog.py
-Diálogo para editar nome e exercícios de uma rotina existente.
+Widget inline para editar nome e exercícios de uma rotina existente.
 """
 from __future__ import annotations
 
 import qtawesome as qta
-from PySide6.QtCore import Qt, QPoint
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QDialog, QFrame, QHBoxLayout,
-    QLabel, QLineEdit, QListWidget, QListWidgetItem,
-    QMessageBox, QPushButton, QVBoxLayout,
+    QFrame, QHBoxLayout, QScrollArea,
+    QLineEdit, QListWidget, QListWidgetItem,
+    QMessageBox, QPushButton, QVBoxLayout, QWidget,
 )
 
 from engine import NormalizationEngine, Routine, RoutineManager
-from ui.theme import C_BORDER, C_GREEN, C_GREEN_BG, C_RED, C_TEXT, C_TEXT2, C_TEXT3, label, separator, RADIUS_MD
-from ui.dialogs import FramelessDialog
+from ui.theme import C_BORDER, C_GREEN, C_GREEN_BG, C_TEXT, C_TEXT2, label, separator, RADIUS_MD
 
 
-class EditRoutineDialog(FramelessDialog):
-    """Edita nome e lista de exercícios de uma rotina."""
+class EditRoutineWidget(QWidget):
+    """Edita nome e lista de exercícios de uma rotina (tela inline)."""
 
-    def __init__(self, routine: Routine, rm: RoutineManager,
-                 norm: NormalizationEngine, parent=None):
-        super().__init__("EDITAR TREINO", parent)
-        self._routine = routine
+    saved     = Signal()  # emitido ao salvar com sucesso
+    cancelled = Signal()  # emitido ao cancelar
+
+    def __init__(self, rm: RoutineManager, norm: NormalizationEngine, parent=None):
+        super().__init__(parent)
         self._rm      = rm
         self._norm    = norm
+        self._routine: Routine | None = None
         self._ex_ids: list[int] = []
         self._ex_names: list[str] = []
-        self.setMinimumWidth(600)
-        self.setMinimumHeight(500)
-        self.resize(640, 560)
         self._build()
-        self._load_current()
+
+    def load_routine(self, routine: Routine):
+        """Carrega os dados da rotina para edição."""
+        self._routine = routine
+        self._ex_ids.clear()
+        self._ex_names.clear()
+        self._list.clear()
+        self._search.clear()
+        self._popup.hide()
+        self._name.setText(routine.name)
+        exercises = self._rm.get_routine_exercises(routine.id)
+        for ex in exercises:
+            self._ex_ids.append(ex.id)
+            self._ex_names.append(ex.canonical_name)
+            item = QListWidgetItem(f"{ex.canonical_name.title()}  [{ex.muscle_group_name}]")
+            item.setData(Qt.UserRole, ex.id)
+            self._list.addItem(item)
 
     def _build(self):
-        lay = self.content_layout()
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        content = QWidget()
+        lay = QVBoxLayout(content)
+        lay.setContentsMargins(24, 24, 24, 24)
+        lay.setSpacing(16)
+
+        # Header com botão voltar
+        hdr = QHBoxLayout()
+        back_btn = QPushButton(" Voltar")
+        back_btn.setIcon(qta.icon("fa5s.arrow-left", color=C_TEXT2))
+        back_btn.setObjectName("ghost")
+        back_btn.setFixedWidth(90)
+        back_btn.clicked.connect(self.cancelled.emit)
+        hdr.addWidget(back_btn)
+        hdr.addStretch()
+        lay.addLayout(hdr)
 
         lay.addWidget(label("EDITAR TREINO", "h2"))
         lay.addWidget(separator())
@@ -110,7 +145,7 @@ class EditRoutineDialog(FramelessDialog):
             }}
             QPushButton:hover {{ background: {C_BORDER}; }}
         """)
-        btn_cancel.clicked.connect(self.reject)
+        btn_cancel.clicked.connect(self.cancelled.emit)
 
         btn_save = QPushButton(" Salvar")
         btn_save.setIcon(qta.icon("fa5s.save", color="#000000"))
@@ -134,19 +169,11 @@ class EditRoutineDialog(FramelessDialog):
         footer.addWidget(btn_save)
         lay.addLayout(footer)
 
-    def _load_current(self):
-        """Preenche o diálogo com os dados atuais da rotina."""
-        self._name.setText(self._routine.name)
-        exercises = self._rm.get_routine_exercises(self._routine.id)
-        for ex in exercises:
-            self._ex_ids.append(ex.id)
-            self._ex_names.append(ex.canonical_name)
-            item = QListWidgetItem(f"{ex.canonical_name.title()}  [{ex.muscle_group_name}]")
-            item.setData(Qt.UserRole, ex.id)
-            self._list.addItem(item)
+        lay.addStretch()
+        scroll.setWidget(content)
+        root.addWidget(scroll)
 
     def _on_search_changed(self, text: str):
-        """Filtra exercícios em tempo real e mostra popup."""
         if not text.strip():
             self._popup.hide()
             return
@@ -160,7 +187,6 @@ class EditRoutineDialog(FramelessDialog):
             item = QListWidgetItem(f"{ex.canonical_name.title()}  [{ex.muscle_group_name}]")
             item.setData(Qt.UserRole, ex)
             self._popup.addItem(item)
-        # Posiciona abaixo do campo de busca
         pos = self._search.mapToGlobal(self._search.rect().bottomLeft())
         self._popup.setFixedWidth(self._search.width())
         row_h = self._popup.sizeHintForRow(0) if self._popup.count() > 0 else 30
@@ -181,11 +207,9 @@ class EditRoutineDialog(FramelessDialog):
         self._popup.hide()
 
     def _add_exercise(self):
-        """Adiciona o primeiro resultado da busca ou o que está no campo."""
         text = self._search.text().strip()
         if not text:
             return
-        # Se popup tem item selecionado, usa ele
         if self._popup.isVisible() and self._popup.currentItem():
             self._on_popup_click(self._popup.currentItem())
             return
@@ -215,11 +239,9 @@ class EditRoutineDialog(FramelessDialog):
         if not self._ex_ids:
             QMessageBox.warning(self, "Atenção", "Adicione ao menos um exercício.")
             return
-        # Atualiza nome
         self._rm._db.execute_write(
             "UPDATE routines SET name=? WHERE id=?",
             (name, self._routine.id),
         )
-        # Atualiza exercícios
         self._rm.update_routine_template(self._routine.id, self._ex_ids)
-        self.accept()
+        self.saved.emit()

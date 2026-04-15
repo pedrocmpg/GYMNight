@@ -7,7 +7,7 @@ from __future__ import annotations
 import qtawesome as qta
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
-    QDialog, QDoubleSpinBox, QFrame, QHBoxLayout, QLabel, QLineEdit,
+    QDoubleSpinBox, QFrame, QHBoxLayout, QLabel, QLineEdit,
     QListWidget, QListWidgetItem, QMessageBox, QPushButton, QScrollArea,
     QSlider, QSpinBox, QStackedWidget, QVBoxLayout, QWidget,
 )
@@ -122,6 +122,13 @@ class WorkoutsTab(QWidget):
         # ── Página 1: formulário de criação ───────────────────────────────
         self._stack.addWidget(self._build_create_page())  # index 1
         self._stack.addWidget(self._build_cardio_page())   # index 2
+
+        # ── Página 3: editar rotina (inline) ─────────────────────────────
+        from ui.screens.edit_routine_dialog import EditRoutineWidget
+        self._edit_widget = EditRoutineWidget(self._rm, self._norm)
+        self._edit_widget.saved.connect(self._on_edit_saved)
+        self._edit_widget.cancelled.connect(lambda: self._stack.setCurrentIndex(0))
+        self._stack.addWidget(self._edit_widget)  # index 3
 
         self.reload()
 
@@ -554,8 +561,10 @@ class WorkoutsTab(QWidget):
         self.start_workout.emit(routine, session_id)
 
     def _on_edit(self, routine: Routine):
-        """Abre diálogo para editar nome e exercícios da rotina."""
-        from ui.screens.edit_routine_dialog import EditRoutineDialog
-        dlg = EditRoutineDialog(routine, self._rm, self._norm, parent=self)
-        if dlg.exec() == QDialog.Accepted:
-            self.reload()
+        """Abre tela inline para editar nome e exercícios da rotina."""
+        self._edit_widget.load_routine(routine)
+        self._stack.setCurrentIndex(3)
+
+    def _on_edit_saved(self):
+        self.reload()
+        self._stack.setCurrentIndex(0)

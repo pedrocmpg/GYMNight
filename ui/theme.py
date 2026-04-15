@@ -7,7 +7,7 @@ Paleta de cores e QSS global do GYMNight.
 # Paleta – hierarquia de superfície
 # ---------------------------------------------------------------------------
 
-C_BG            = "#121212"   # fundo da janela — mais escuro
+C_BG            = "#161616"   # fundo da janela — mais escuro
 C_SURFACE       = "#161616"   # superfície principal
 C_CARD          = "#1e1e1e"   # cards gerais — visivelmente mais claro que o fundo
 C_STAT_CARD     = "#1e1e1e"   # stat cards — cor própria, independente do fundo
@@ -22,7 +22,7 @@ C_GREEN_BG      = "#1a2e0a"
 C_ACCENT_MUTED  = "#1a3a00"   # seleção suave
 
 C_TEXT          = "#ffffff"
-C_TEXT2         = "#9ca3af"
+C_TEXT2         = "#6b7280"
 C_TEXT3         = "#6b7280"
 
 C_RED           = "#ef4444"

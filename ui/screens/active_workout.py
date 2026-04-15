@@ -8,7 +8,7 @@ import qtawesome as qta
 from PySide6.QtCore import Qt, Signal, QTimer
 from PySide6.QtWidgets import (
     QComboBox, QDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
-    QMessageBox, QPushButton, QScrollArea, QVBoxLayout, QWidget,
+    QMessageBox, QPushButton, QScrollArea, QStackedWidget, QVBoxLayout, QWidget,
 )
 
 from database import DatabaseConnection
@@ -20,6 +20,7 @@ from ui.theme import (
 )
 from ui.screens.cardio_widget import CardioPickerDialog, CardioRow
 from ui.widgets.set_indicator import SetIndicatorWidget
+from ui.widgets.muscle_heatmap import MuscleHeatmapWidget
 from core.models import SET_TYPES
 
 
@@ -40,12 +41,22 @@ class ActiveWorkoutScreen(QWidget):
         self._current_idx = 0
         self._series_data: list[list[dict]] = []
         self._cardio_rows: list[CardioRow] = []
+        self._finish_payload: dict = {}
         self._build()
 
     def _build(self):
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
+
+        self._main_stack = QStackedWidget()
+        root.addWidget(self._main_stack)
+
+        # ── Página 0: tela de treino ──────────────────────────────────────
+        workout_page = QWidget()
+        workout_root = QVBoxLayout(workout_page)
+        workout_root.setContentsMargins(0, 0, 0, 0)
+        workout_root.setSpacing(0)
 
         # Scroll principal
         scroll = QScrollArea()
@@ -188,7 +199,7 @@ class ActiveWorkoutScreen(QWidget):
 
         lay.addStretch()
         scroll.setWidget(content)
-        root.addWidget(scroll)
+        workout_root.addWidget(scroll)
 
         # Navegação (fora do scroll, fixo no rodapé)
         nav_w = QWidget()
@@ -211,7 +222,12 @@ class ActiveWorkoutScreen(QWidget):
 
         nav.addWidget(self._prev_btn, 1)
         nav.addWidget(self._next_btn, 2)
-        root.addWidget(nav_w)
+        workout_root.addWidget(nav_w)
+
+        self._main_stack.addWidget(workout_page)  # index 0
+
+        # ── Página 1: tela de resumo (finalizar treino) ───────────────────
+        self._main_stack.addWidget(self._build_summary_page())  # index 1
 
     # ------------------------------------------------------------------
     # Cardio
@@ -495,17 +511,118 @@ class ActiveWorkoutScreen(QWidget):
     # Finalização
     # ------------------------------------------------------------------
 
-    def _finish(self):
-        if QMessageBox.question(self, "Finalizar", "Encerrar sessão?",
-                                QMessageBox.Yes | QMessageBox.No) != QMessageBox.Yes:
-            return
+    def _build_summary_page(self) -> QWidget:
+        """Tela de resumo exibida ao finalizar o treino (inline)."""
+        page = QWidget()
+        root = QVBoxLayout(page)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
 
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        content = QWidget()
+        lay = QVBoxLayout(content)
+        lay.setContentsMargins(40, 40, 40, 40)
+        lay.setSpacing(24)
+        lay.setAlignment(Qt.AlignTop)
+
+        # Ícone de troféu
+        icon_lbl = QLabel("🏆")
+        icon_lbl.setAlignment(Qt.AlignCenter)
+        icon_lbl.setStyleSheet("font-size: 64px;")
+        lay.addWidget(icon_lbl)
+
+        self._summary_title = label("TREINO CONCLUÍDO!", "h1")
+        self._summary_title.setAlignment(Qt.AlignCenter)
+        self._summary_title.setStyleSheet(f"color: {C_GREEN}; font-size: 28px; font-weight: 900;")
+        lay.addWidget(self._summary_title)
+
+        lay.addWidget(separator())
+
+        # Cards de métricas
+        metrics_row = QHBoxLayout()
+        metrics_row.setSpacing(16)
+
+        self._sum_volume = self._metric_card("Volume", "0 kg", "fa5s.dumbbell")
+        self._sum_duration = self._metric_card("Duração", "00:00", "fa5s.clock")
+        self._sum_cardio = self._metric_card("Cardio", "0 min", "fa5s.heartbeat")
+        metrics_row.addWidget(self._sum_volume)
+        metrics_row.addWidget(self._sum_duration)
+        metrics_row.addWidget(self._sum_cardio)
+        lay.addLayout(metrics_row)
+
+        self._sum_cardio_pse_lbl = label("", "sub")
+        self._sum_cardio_pse_lbl.setAlignment(Qt.AlignCenter)
+        lay.addWidget(self._sum_cardio_pse_lbl)
+
+        # ── Muscle heatmap ────────────────────────────────────────────────
+        lay.addWidget(separator())
+        heatmap_title = label("MÚSCULOS TRABALHADOS", "h3")
+        heatmap_title.setAlignment(Qt.AlignCenter)
+        lay.addWidget(heatmap_title)
+
+        self._heatmap = MuscleHeatmapWidget()
+        lay.addWidget(self._heatmap)
+
+        lay.addStretch()
+
+        # Botão voltar para treinos
+        btn_done = QPushButton(" Voltar para Treinos")
+        btn_done.setIcon(qta.icon("fa5s.home", color="#000000"))
+        btn_done.setMinimumHeight(48)
+        btn_done.setStyleSheet(f"""
+            QPushButton {{
+                background: {C_GREEN};
+                color: #000;
+                border: none;
+                border-radius: {RADIUS_MD}px;
+                font-size: 15px;
+                font-weight: 700;
+                padding: 0 24px;
+            }}
+            QPushButton:hover {{ background: #bef264; }}
+        """)
+        btn_done.clicked.connect(self._on_summary_done)
+        lay.addWidget(btn_done)
+
+        scroll.setWidget(content)
+        root.addWidget(scroll)
+        return page
+
+    def _metric_card(self, title: str, value: str, icon_name: str) -> QFrame:
+        card = QFrame()
+        card.setObjectName("card")
+        card_lay = QVBoxLayout(card)
+        card_lay.setContentsMargins(16, 16, 16, 16)
+        card_lay.setSpacing(8)
+        card_lay.setAlignment(Qt.AlignCenter)
+
+        icon_lbl = QLabel()
+        icon_lbl.setPixmap(qta.icon(icon_name, color=C_GREEN).pixmap(28, 28))
+        icon_lbl.setAlignment(Qt.AlignCenter)
+        card_lay.addWidget(icon_lbl)
+
+        val_lbl = QLabel(value)
+        val_lbl.setAlignment(Qt.AlignCenter)
+        val_lbl.setStyleSheet(f"color: {C_TEXT}; font-size: 22px; font-weight: 800;")
+        card_lay.addWidget(val_lbl)
+
+        title_lbl = label(title, "sub")
+        title_lbl.setAlignment(Qt.AlignCenter)
+        card_lay.addWidget(title_lbl)
+
+        # Guarda referência ao label de valor para atualizar depois
+        card._value_lbl = val_lbl
+        return card
+
+    def _finish(self):
         # Salva cardio no banco
         self._save_cardio_logs()
 
         duration = self._rm.end_session(self._session_id) if self._session_id else 0
 
-        # Salva séries que têm dados mas não foram salvas ainda (ex: não marcadas com ✔)
+        # Salva séries que têm dados mas não foram salvas ainda
         if self._session_id:
             for ex_idx, ex_series in enumerate(self._series_data):
                 for s_idx, s in enumerate(ex_series):
@@ -522,12 +639,9 @@ class ActiveWorkoutScreen(QWidget):
                     except Exception as e:
                         print(f"[GYMNight] Erro ao salvar série no finish ex={ex_idx} s={s_idx}: {e}")
 
-        # Debug: mostra séries marcadas vs salvas no banco
         done_series = [(i, j, s) for i, ex in enumerate(self._series_data)
                        for j, s in enumerate(ex) if s.get("done")]
         print(f"[GYMNight] Séries marcadas como done: {len(done_series)}")
-        for i, j, s in done_series:
-            print(f"  ex={i} s={j} weight={s.get('weight')} reps={s.get('reps')} set_type={s.get('set_type')}")
 
         logs_count = self._db.fetchone(
             "SELECT COUNT(*) AS c FROM workout_logs WHERE session_id=?", (self._session_id,)
@@ -539,19 +653,29 @@ class ActiveWorkoutScreen(QWidget):
             (self._session_id,),
         )
         vol = float(row["v"]) if row else 0.0
-        print(f"[GYMNight] Volume calculado: {vol}")
         cardio = self._cardio_summary()
         mins, secs = divmod(duration, 60)
 
-        # Resumo
-        summary = f"Treino de Força Concluído!\nVolume: {vol:.0f} kg · Duração: {mins:02d}:{secs:02d}"
+        # Atualiza tela de resumo
+        self._sum_volume._value_lbl.setText(f"{vol:.0f} kg")
+        self._sum_duration._value_lbl.setText(f"{mins:02d}:{secs:02d}")
         if cardio["cardio_count"] > 0:
-            summary += f"\n\n{int(cardio['cardio_total_min'])} min de Cardio"
-            if cardio["cardio_avg_pse"]:
-                summary += f" · PSE médio: {cardio['cardio_avg_pse']}/10"
-        QMessageBox.information(self, "Treino Finalizado", summary)
+            self._sum_cardio._value_lbl.setText(f"{int(cardio['cardio_total_min'])} min")
+            pse_txt = f"PSE médio: {cardio['cardio_avg_pse']}/10" if cardio["cardio_avg_pse"] else ""
+            self._sum_cardio_pse_lbl.setText(pse_txt)
+        else:
+            self._sum_cardio._value_lbl.setText("—")
+            self._sum_cardio_pse_lbl.setText("")
 
-        payload = {
+        # Atualiza heatmap muscular — session_id ainda válido aqui
+        if self._session_id:
+            breakdown = self._analyzer.get_muscle_volume_breakdown(self._session_id)
+            muscle_vols = {r.muscle_group_id: r.volume for r in breakdown}
+        else:
+            muscle_vols = {}
+        self._heatmap.update_heatmap(muscle_vols)
+
+        self._finish_payload = {
             "session_id":       self._session_id,
             "volume_total":     vol,
             "duration_seconds": duration,
@@ -559,10 +683,18 @@ class ActiveWorkoutScreen(QWidget):
             **cardio,
         }
         self._session_id = None
-        self.finished.emit(payload)
+
+        # Mostra tela de resumo inline
+        self._main_stack.setCurrentIndex(1)
+
+    def _on_summary_done(self):
+        """Volta para a lista de treinos após ver o resumo."""
+        self._main_stack.setCurrentIndex(0)
+        self.finished.emit(self._finish_payload)
 
     def _confirm_back(self):
         if QMessageBox.question(self, "Voltar", "Abandonar o treino atual?",
                                 QMessageBox.Yes | QMessageBox.No) == QMessageBox.Yes:
             self._session_id = None
+            self._main_stack.setCurrentIndex(0)
             self.finished.emit({})
