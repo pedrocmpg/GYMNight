@@ -19,6 +19,7 @@ from ui.screens.dashboard import DashboardTab
 from ui.screens.workouts import WorkoutsTab
 from ui.screens.active_workout import ActiveWorkoutScreen
 from ui.screens.results import ResultsTab
+from ui.screens.setup import SetupScreen, load_user_data
 
 
 # ---------------------------------------------------------------------------
@@ -202,11 +203,27 @@ class MainWindow(QMainWindow):
         self._analyzer.moveToThread(self._worker)
         self._worker.start()
 
+        # Outer rounded container
         central = _RoundedWidget()
         self.setCentralWidget(central)
         root = QVBoxLayout(central)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
+
+        # Outer stack: page 0 = Setup, page 1 = Main app
+        self._outer_stack = QStackedWidget()
+        root.addWidget(self._outer_stack)
+
+        # --- Page 0: Setup screen ---
+        self._setup_screen = SetupScreen()
+        self._setup_screen.setup_complete.connect(self._on_setup_complete)
+        self._outer_stack.addWidget(self._setup_screen)  # index 0
+
+        # --- Page 1: Main app (titlebar + inner stack) ---
+        main_page = QWidget()
+        main_lay = QVBoxLayout(main_page)
+        main_lay.setContentsMargins(0, 0, 0, 0)
+        main_lay.setSpacing(0)
 
         self._titlebar = _TitleBar(self)
 
@@ -222,10 +239,10 @@ class MainWindow(QMainWindow):
         self._titlebar.add_nav_button(self._btn_workouts)
         self._titlebar.add_nav_button(self._btn_results)
 
-        root.addWidget(self._titlebar)
+        main_lay.addWidget(self._titlebar)
 
         self._stack = QStackedWidget()
-        root.addWidget(self._stack)
+        main_lay.addWidget(self._stack)
 
         self._dash_tab    = DashboardTab(self._db)
         self._workout_tab = WorkoutsTab(self._db, self._rm, self._norm)
@@ -241,11 +258,36 @@ class MainWindow(QMainWindow):
         self._active_tab.finished.connect(self._go_workouts)
         self._active_tab.finished.connect(self._dash_tab.on_workout_finished)
 
+        self._outer_stack.addWidget(main_page)  # index 1
+
         # Instala o event filter global para drag funcionar no X11/WSL
         self._drag_filter = _TitleBarDragFilter(self._titlebar, self)
         QApplication.instance().installEventFilter(self._drag_filter)
 
+        # Persistência: pula setup se user_data.json já existir
+        user_data = load_user_data()
+        if user_data:
+            self._apply_user_data(user_data)
+            self._outer_stack.setCurrentIndex(1)
+            self._navigate(0)
+        else:
+            # Ajusta tamanho da janela para o setup
+            self.resize(600, 700)
+            self._outer_stack.setCurrentIndex(0)
+
+    # ------------------------------------------------------------------
+
+    def _on_setup_complete(self, data: dict):
+        """Chamado quando o usuário termina o setup."""
+        self._apply_user_data(data)
+        # Restaura tamanho normal da janela
+        self.resize(1100, 720)
+        self._outer_stack.setCurrentIndex(1)
         self._navigate(0)
+
+    def _apply_user_data(self, data: dict):
+        """Atualiza o dashboard com os dados do perfil."""
+        self._dash_tab.update_user(data)
 
     # ------------------------------------------------------------------
 

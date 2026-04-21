@@ -77,6 +77,18 @@ class DashboardTab(QWidget):
         self._db = db
         self._build()
 
+    def update_user(self, data: dict):
+        """Atualiza o banner com os dados do usuário."""
+        name = data.get("name", "").upper()
+        self.banner_label.setText(
+            f"<span style='word-spacing:0px'>BOM TREINO, "
+            f"<span style='color:#a3e635'>{name}</span></span>"
+        )
+        weight = data.get("weight", "")
+        height = data.get("height", "")
+        goal   = data.get("goal", "")
+        self._sub_label.setText(f"{weight}kg · {height}cm · Meta: {goal}")
+
     def _build(self):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
@@ -92,13 +104,13 @@ class DashboardTab(QWidget):
         hero_lay = QVBoxLayout(hero)
         hero_lay.setContentsMargins(24, 20, 24, 20)
         hero_lay.setSpacing(4)
-        hero_title = QLabel("<span style='word-spacing:0px'>BOM TREINO, <span style='color:#a3e635'>PEDRO</span></span>")
-        hero_title.setTextFormat(Qt.RichText)
-        hero_title.setStyleSheet("font-size:42px; font-weight:800; color:#fff; background:transparent; word-spacing:0px;")
-        hero_lay.addWidget(hero_title)
-        sub = label("75kg · 175cm · Meta: Hipertrofia", "sub")
-        sub.setStyleSheet("font-size:12px; color:#b3b3b3; background:transparent;")
-        hero_lay.addWidget(sub)
+        self.banner_label = QLabel("<span style='word-spacing:0px'>BOM TREINO, <span style='color:#a3e635'>...</span></span>")
+        self.banner_label.setTextFormat(Qt.RichText)
+        self.banner_label.setStyleSheet("font-size:42px; font-weight:800; color:#fff; background:transparent; word-spacing:0px;")
+        hero_lay.addWidget(self.banner_label)
+        self._sub_label = label("", "sub")
+        self._sub_label.setStyleSheet("font-size:12px; color:#b3b3b3; background:transparent;")
+        hero_lay.addWidget(self._sub_label)
         lay.addWidget(hero)
 
         # Stat cards
