@@ -52,7 +52,8 @@ class _RoundedWidget(QWidget):
         path.addRoundedRect(0, 0, self.width(), self.height(), self.RADIUS, self.RADIUS)
         p.fillPath(path, QColor(C_SURFACE))
         from PySide6.QtGui import QPen
-        p.setPen(QPen(QColor(C_BORDER), 1))
+        pen = QPen(QColor(C_GREEN), 2)
+        p.setPen(pen)
         p.drawPath(path)
         p.end()
 
@@ -206,6 +207,8 @@ class MainWindow(QMainWindow):
         # Outer rounded container
         central = _RoundedWidget()
         self.setCentralWidget(central)
+        from ui.theme import neon_glow
+        neon_glow(central, C_GREEN, blur=135, opacity=540)
         root = QVBoxLayout(central)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
@@ -292,6 +295,7 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _navigate(self, idx: int):
+        from ui.theme import neon_glow
         active_style = (
             f"background:{C_GREEN}; color:#000; border:none;"
             f" border-radius:{RADIUS_MD}px; padding:0 14px; font-weight:700;"
@@ -300,9 +304,16 @@ class MainWindow(QMainWindow):
             f"background:transparent; color:{C_TEXT2};"
             f" border:1px solid {C_BORDER}; border-radius:{RADIUS_MD}px; padding:0 14px;"
         )
-        self._btn_dash.setStyleSheet(active_style if idx == 0 else inactive_style)
-        self._btn_workouts.setStyleSheet(active_style if idx == 1 else inactive_style)
-        self._btn_results.setStyleSheet(active_style if idx == 3 else inactive_style)
+        
+        # Aplica estilos e efeito neon
+        for btn, btn_idx in [(self._btn_dash, 0), (self._btn_workouts, 1), (self._btn_results, 3)]:
+            if btn_idx == idx:
+                btn.setStyleSheet(active_style)
+                neon_glow(btn, C_GREEN, blur=68, opacity=486)
+            else:
+                btn.setStyleSheet(inactive_style)
+                btn.setGraphicsEffect(None)
+        
         if idx == 0:
             self._dash_tab.refresh()
         if idx == 3:

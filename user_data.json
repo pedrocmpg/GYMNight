@@ -1,8 +1,8 @@
 {
-  "name": "Sofia",
-  "age": 25,
+  "name": "Pedro",
   "weight": 75.0,
   "height": 175,
-  "goal": "Definição",
+  "gender": "other",
+  "goal": "Hipertrofia",
   "frequency": 4
 }

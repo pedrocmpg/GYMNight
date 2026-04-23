@@ -15,7 +15,7 @@ from database import DatabaseConnection
 from engine import Exercise, NormalizationEngine, PerformanceAnalyzer, Routine, RoutineManager
 from ui.theme import (
     C_BORDER, C_CARD, C_CARD2, C_GREEN, C_GREEN_BG,
-    C_TEXT, C_TEXT2, C_TEXT3, label, separator,
+    C_TEXT, C_TEXT2, C_TEXT3, label, separator, neon_glow,
     RADIUS_SM, RADIUS_MD, RADIUS_LG,
 )
 from ui.screens.cardio_widget import CardioPickerDialog, CardioRow
@@ -129,6 +129,7 @@ class ActiveWorkoutScreen(QWidget):
         # Card do exercício atual
         self._ex_card = QFrame()
         self._ex_card.setObjectName("card")
+        neon_glow(self._ex_card, C_GREEN, blur=81, opacity=405)
         ex_lay = QVBoxLayout(self._ex_card)
         ex_lay.setContentsMargins(20, 20, 20, 20)
         ex_lay.setSpacing(14)
@@ -183,7 +184,7 @@ class ActiveWorkoutScreen(QWidget):
                 font-weight: 700;
                 font-size: 12px;
             }}
-            QPushButton:hover {{ background: {C_GREEN_BG}; }}
+            QPushButton:hover {{ background: rgba(162, 255, 0, 0.12); }}
         """)
         add_cardio_btn.clicked.connect(self._add_cardio)
         cardio_hdr.addWidget(add_cardio_btn)
@@ -593,6 +594,7 @@ class ActiveWorkoutScreen(QWidget):
     def _metric_card(self, title: str, value: str, icon_name: str) -> QFrame:
         card = QFrame()
         card.setObjectName("card")
+        neon_glow(card, C_GREEN, blur=68, opacity=324)
         card_lay = QVBoxLayout(card)
         card_lay.setContentsMargins(16, 16, 16, 16)
         card_lay.setSpacing(8)

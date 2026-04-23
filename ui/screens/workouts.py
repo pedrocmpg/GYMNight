@@ -74,7 +74,7 @@ class WorkoutsTab(QWidget):
                 font-weight: 700;
                 font-size: 13px;
             }}
-            QPushButton:hover {{ background: {C_GREEN_BG}; }}
+            QPushButton:hover {{ background: rgba(162, 255, 0, 0.12); }}
             QPushButton:pressed {{ background: {C_GREEN}; color: #000; }}
         """)
         cardio_btn.clicked.connect(self._open_cardio)

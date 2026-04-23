@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
 
 from ui.theme import (
     C_BORDER, C_CARD, C_GREEN, C_SURFACE, C_TEXT2, C_TEXT3,
-    RADIUS_MD, RADIUS_LG,
+    RADIUS_MD, RADIUS_LG, neon_glow,
 )
 from ui.titlebar import make_wm_buttons
 
@@ -58,6 +58,8 @@ _FIELD = (
 _FIELD_FOCUS = (
     f"background:#1e1e1e; color:#fff; border:2px solid {C_BORDER};"
     f"border-radius:12px; padding:14px 18px; font-size:15px;"
+    f"QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus"
+    f"{{ border:2px solid {C_GREEN}; }}"
 )
 
 _LBL = f"color:{C_TEXT2}; font-size:14px; font-weight:600; background:transparent; border:none;"
@@ -85,10 +87,11 @@ def _primary_btn(text: str, large: bool = False) -> QPushButton:
     b.setStyleSheet(
         f"background:{C_GREEN}; color:#000; font-size:16px; font-weight:800;"
         f"border:none; border-radius:12px; padding:0 24px;"
-        f"QPushButton:hover {{ background:#bef264; }}"
+        f"QPushButton:hover {{ background:#8ad900; }}"
         f"QPushButton:pressed {{ background:#84cc16; }}"
     )
     b.setCursor(Qt.PointingHandCursor)
+    # Não aplica efeito neon nos botões primários para mantê-los visíveis
     return b
 
 
@@ -98,7 +101,7 @@ def _ghost_btn(text: str) -> QPushButton:
     b.setStyleSheet(
         f"background:transparent; color:{C_TEXT2}; font-size:15px; font-weight:600;"
         f"border:2px solid {C_BORDER}; border-radius:12px; padding:0 24px;"
-        f"QPushButton:hover {{ border-color:{C_GREEN}; color:#fff; }}"
+        f"QPushButton:hover {{ border-color:{C_GREEN}; color:#fff; background:rgba(162, 255, 0, 0.08); }}"
     )
     b.setCursor(Qt.PointingHandCursor)
     return b
@@ -107,32 +110,27 @@ def _ghost_btn(text: str) -> QPushButton:
 def _selectable_tile(text: str, large: bool = False) -> QPushButton:
     """Cria um botão estilo 'tile' selecionável com efeito de glow."""
     b = QPushButton(text)
-    # Não define altura fixa aqui - será definida com setMinimumHeight no layout
     b.setCheckable(True)
     b.setStyleSheet(
         f"QPushButton {{"
         f"  background:#1e1e1e; color:{C_TEXT2}; font-size:15px; font-weight:700;"
-        f"  border:2px solid {C_BORDER}; border-radius:12px; padding:0 20px;"
+        f"  border:2px solid {C_BORDER}; border-radius:12px;"
+        f"  padding:16px 20px;"
+        f"  min-height:50px;"
         f"}}"
         f"QPushButton:hover {{"
-        f"  border-color:#555; color:#fff;"
+        f"  border-color:{C_GREEN}; color:#fff; background:#1a1a1a;"
         f"}}"
         f"QPushButton:checked {{"
         f"  background:{C_GREEN}; color:#000; border:2px solid {C_GREEN};"
         f"  font-weight:800;"
         f"}}"
+        f"QPushButton:checked:hover {{"
+        f"  background:#8ad900;"
+        f"}}"
     )
     b.setCursor(Qt.PointingHandCursor)
     return b
-
-
-def _add_glow(widget: QWidget, color: str = C_GREEN, blur: int = 20):
-    """Adiciona efeito de glow (sombra colorida) a um widget."""
-    effect = QGraphicsDropShadowEffect()
-    effect.setBlurRadius(blur)
-    effect.setColor(QColor(color))
-    effect.setOffset(0, 0)
-    widget.setGraphicsEffect(effect)
 
 
 # ---------------------------------------------------------------------------
@@ -204,30 +202,27 @@ class _SetupTitleBar(QWidget):
 class _StepCard(QWidget):
     def __init__(self, title: str, subtitle: str, parent=None):
         super().__init__(parent)
-        self.setFixedWidth(520)
+        self.setFixedWidth(700)
         self.setStyleSheet(
-            f"background:{C_CARD}; border:2px solid {C_BORDER}; border-radius:16px;"
+            f"background:#1e1e1e; border:1px solid #2a2a2a; border-radius:20px;"
         )
 
         self._lay = QVBoxLayout(self)
-        self._lay.setContentsMargins(40, 36, 40, 36)
-        self._lay.setSpacing(24)
+        self._lay.setContentsMargins(50, 40, 50, 40)
+        self._lay.setSpacing(16)
 
-        # Título
+        # Título com ícone
         t = QLabel(title)
-        t.setStyleSheet("color:#fff; font-size:24px; font-weight:800; background:transparent; border:none;")
+        t.setStyleSheet("color:#fff; font-size:28px; font-weight:800; background:transparent; border:none;")
         self._lay.addWidget(t)
 
         # Subtítulo
         s = QLabel(subtitle)
-        s.setStyleSheet(f"color:{C_TEXT3}; font-size:14px; background:transparent; border:none;")
+        s.setStyleSheet(f"color:#6b7280; font-size:15px; background:transparent; border:none;")
         self._lay.addWidget(s)
 
-        # Separador visual
-        sep = QWidget()
-        sep.setFixedHeight(2)
-        sep.setStyleSheet(f"background:{C_BORDER};")
-        self._lay.addWidget(sep)
+        # Espaçamento
+        self._lay.addSpacing(10)
 
     def content_layout(self) -> QVBoxLayout:
         return self._lay
@@ -249,20 +244,18 @@ class _ProgressDots(QWidget):
         lay.addStretch()
         for _ in range(total):
             d = QLabel()
-            d.setFixedSize(8, 8)
-            d.setStyleSheet(f"background:{C_BORDER}; border-radius:4px;")
+            d.setFixedSize(60, 6)
+            d.setStyleSheet(f"background:#2a2a2a; border-radius:3px;")
             self._dots.append(d)
             lay.addWidget(d)
         lay.addStretch()
 
     def set_step(self, idx: int):
         for i, d in enumerate(self._dots):
-            if i == idx:
-                d.setStyleSheet(f"background:{C_GREEN}; border-radius:4px;")
-                d.setFixedSize(20, 8)
+            if i <= idx:
+                d.setStyleSheet(f"background:{C_GREEN}; border-radius:3px;")
             else:
-                d.setStyleSheet(f"background:{C_BORDER}; border-radius:4px;")
-                d.setFixedSize(8, 8)
+                d.setStyleSheet(f"background:#2a2a2a; border-radius:3px;")
 
 
 # ---------------------------------------------------------------------------
@@ -279,7 +272,7 @@ class SetupScreen(QWidget):
 
     def __init__(self, parent=None):
         """
-        Setup screen com 3 etapas: Identidade, Métricas e Objetivos.
+        Setup screen com 4 etapas: Nome, Medidas, Gênero e Meta.
         """
         super().__init__(parent)
         self._build()
@@ -297,24 +290,38 @@ class SetupScreen(QWidget):
         body = QWidget()
         body.setStyleSheet(f"background:{C_SURFACE};")
         body_lay = QVBoxLayout(body)
-        body_lay.setContentsMargins(0, 32, 0, 32)
-        body_lay.setSpacing(20)
+        body_lay.setContentsMargins(0, 40, 0, 40)
+        body_lay.setSpacing(30)
+
+        # Logo centralizado
+        logo_lay = QHBoxLayout()
+        logo_lay.addStretch()
+        logo_icon = QLabel("💪")
+        logo_icon.setStyleSheet(f"color:{C_GREEN}; font-size:48px; background:transparent; border:none;")
+        logo_lay.addWidget(logo_icon)
+        logo_text = QLabel("GYMNight")
+        logo_text.setStyleSheet(f"color:#fff; font-size:36px; font-weight:800; background:transparent; border:none;")
+        logo_lay.addWidget(logo_text)
+        logo_lay.addStretch()
+        body_lay.addLayout(logo_lay)
 
         # Dots de progresso
-        self._dots = _ProgressDots(3)
+        self._dots = _ProgressDots(4)
         body_lay.addWidget(self._dots)
 
-        # Inner stack com os 3 passos
+        # Inner stack com os 4 passos
         self._stack = QStackedWidget()
         self._stack.setStyleSheet("background:transparent;")
 
         self._page0 = self._build_step0()
         self._page1 = self._build_step1()
         self._page2 = self._build_step2()
+        self._page3 = self._build_step3()
 
         self._stack.addWidget(self._page0)
         self._stack.addWidget(self._page1)
         self._stack.addWidget(self._page2)
+        self._stack.addWidget(self._page3)
 
         # Centraliza o stack
         stack_wrap = QHBoxLayout()
@@ -333,29 +340,22 @@ class SetupScreen(QWidget):
     # ------------------------------------------------------------------
 
     def _build_step0(self) -> QWidget:
-        """Passo 1 — Identidade: Nome e Idade."""
-        card = _StepCard("Quem é você?", "Passo 1 de 3 · Identidade")
+        """Passo 1 — Nome."""
+        card = _StepCard("👤 SEU NOME", "Como você quer ser chamado?")
         lay = card.content_layout()
 
         self._name = QLineEdit()
-        self._name.setPlaceholderText("Ex: Pedro")
+        self._name.setPlaceholderText("Ex: João")
         self._name.setStyleSheet(_FIELD_FOCUS)
-        self._name.setFixedHeight(50)
-        lay.addLayout(_input_row(_field_label("Nome"), self._name))
-
-        self._age = QSpinBox()
-        self._age.setRange(10, 100)
-        self._age.setValue(25)
-        self._age.setStyleSheet(_FIELD_FOCUS)
-        self._age.setFixedHeight(50)
-        lay.addLayout(_input_row(_field_label("Idade"), self._age))
+        self._name.setFixedHeight(56)
+        lay.addWidget(self._name)
 
         self._err0 = QLabel("")
         self._err0.setStyleSheet(_ERR)
         self._err0.hide()
         lay.addWidget(self._err0)
 
-        lay.addSpacing(10)
+        lay.addSpacing(20)
         btn_next = _primary_btn("Próximo →")
         btn_next.clicked.connect(self._next_from_0)
         lay.addWidget(btn_next)
@@ -363,109 +363,210 @@ class SetupScreen(QWidget):
         return card
 
     def _build_step1(self) -> QWidget:
-        """Passo 2 — Métricas: Peso e Altura."""
-        card = _StepCard("Suas medidas", "Passo 2 de 3 · Métricas")
+        """Passo 2 — Medidas: Peso e Altura."""
+        card = _StepCard("⚖️ MEDIDAS", "Informe seu peso e altura atuais")
         lay = card.content_layout()
 
+        row = QHBoxLayout()
+        row.setSpacing(16)
+        
+        # Peso
+        col_weight = QVBoxLayout()
+        col_weight.setSpacing(8)
+        col_weight.addWidget(_field_label("Peso (kg)"))
         self._weight = QDoubleSpinBox()
         self._weight.setRange(30.0, 300.0)
         self._weight.setValue(75.0)
-        self._weight.setSuffix(" kg")
-        self._weight.setDecimals(1)
+        self._weight.setDecimals(0)
+        self._weight.setButtonSymbols(QDoubleSpinBox.NoButtons)
         self._weight.setStyleSheet(_FIELD_FOCUS)
-        self._weight.setFixedHeight(50)
-        lay.addLayout(_input_row(_field_label("Peso"), self._weight))
+        self._weight.setFixedHeight(56)
+        col_weight.addWidget(self._weight)
+        row.addLayout(col_weight)
 
+        # Altura
+        col_height = QVBoxLayout()
+        col_height.setSpacing(8)
+        col_height.addWidget(_field_label("Altura (cm)"))
         self._height = QSpinBox()
         self._height.setRange(100, 250)
         self._height.setValue(175)
-        self._height.setSuffix(" cm")
+        self._height.setButtonSymbols(QSpinBox.NoButtons)
         self._height.setStyleSheet(_FIELD_FOCUS)
-        self._height.setFixedHeight(50)
-        lay.addLayout(_input_row(_field_label("Altura"), self._height))
+        self._height.setFixedHeight(56)
+        col_height.addWidget(self._height)
+        row.addLayout(col_height)
+        
+        lay.addLayout(row)
 
-        lay.addSpacing(10)
-        btns = QHBoxLayout()
-        btns.setSpacing(12)
-        btn_back = _ghost_btn("← Voltar")
-        btn_back.clicked.connect(lambda: self._goto(0))
+        lay.addSpacing(20)
         btn_next = _primary_btn("Próximo →")
         btn_next.clicked.connect(lambda: self._goto(2))
-        btns.addWidget(btn_back)
-        btns.addWidget(btn_next)
-        lay.addLayout(btns)
+        lay.addWidget(btn_next)
+        
+        lay.addSpacing(10)
+        btn_back = QPushButton("Voltar")
+        btn_back.setStyleSheet(f"background:transparent; color:{C_TEXT3}; border:none; font-size:14px;")
+        btn_back.setCursor(Qt.PointingHandCursor)
+        btn_back.clicked.connect(lambda: self._goto(0))
+        lay.addWidget(btn_back, 0, Qt.AlignCenter)
 
         return card
 
     def _build_step2(self) -> QWidget:
-        """Passo 3 — Objetivos: Meta e Frequência com tiles selecionáveis."""
-        card = _StepCard("Seus objetivos", "Passo 3 de 3 · Metas")
+        """Passo 3 — Gênero."""
+        card = _StepCard("🏷️ GÊNERO", "Selecione seu gênero")
         lay = card.content_layout()
 
-        # Seção de Objetivo
-        lay.addWidget(_field_label("Objetivo"))
-        lay.addSpacing(8)
+        self._gender_buttons = []
+        gender_options = [
+            ("Masculino", "male"),
+            ("Feminino", "female"),
+            ("Outro", "other")
+        ]
         
-        # Layout dedicado para os botões de objetivo
-        self._goal_buttons = []
-        goal_options = ["Hipertrofia", "Definição", "Força", "Saúde"]
-        goal_layout = QVBoxLayout()
-        goal_layout.setSpacing(10)
+        for text, value in gender_options:
+            btn = _selectable_tile(text, large=False)
+            btn.setFixedHeight(56)
+            btn.setProperty("gender_value", value)
+            btn.clicked.connect(lambda checked, b=btn: self._select_gender(b))
+            self._gender_buttons.append(btn)
+            lay.addWidget(btn)
         
-        for goal in goal_options:
-            btn = _selectable_tile(goal, large=True)
-            btn.setMinimumHeight(50)
-            btn.clicked.connect(lambda checked, b=btn: self._select_goal(b))
-            self._goal_buttons.append(btn)
-            goal_layout.addWidget(btn)
-        
-        lay.addLayout(goal_layout)
-        
-        # Espaçamento para separar as seções
-        lay.addSpacing(30)
-
-        # Seção de Frequência
-        lay.addWidget(_field_label("Frequência semanal"))
-        lay.addSpacing(8)
-        
-        self._freq_buttons = []
-        freq_layout = QHBoxLayout()
-        freq_layout.setSpacing(10)
-        
-        for day in range(1, 8):
-            btn = _selectable_tile(str(day))
-            btn.setFixedWidth(60)
-            btn.setMinimumHeight(50)
-            btn.clicked.connect(lambda checked, b=btn: self._select_freq(b))
-            self._freq_buttons.append(btn)
-            freq_layout.addWidget(btn)
-        
-        lay.addLayout(freq_layout)
-        
-        # Spacer expansível para empurrar botões para o fundo
-        lay.addItem(QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding))
-
-        # Botões de navegação no fundo
-        btns = QHBoxLayout()
-        btns.setSpacing(12)
-        btn_back = _ghost_btn("← Voltar")
-        btn_back.clicked.connect(lambda: self._goto(1))
-        btns.addWidget(btn_back)
-        lay.addLayout(btns)
+        lay.addSpacing(20)
+        btn_next = _primary_btn("Próximo →")
+        btn_next.clicked.connect(lambda: self._goto(3))
+        lay.addWidget(btn_next)
         
         lay.addSpacing(10)
-        
-        # Botão Finish grande e proeminente
-        self._btn_finish = _primary_btn("Começar a Treinar ✓", large=True)
-        self._btn_finish.clicked.connect(self._finish)
-        lay.addWidget(self._btn_finish)
+        btn_back = QPushButton("Voltar")
+        btn_back.setStyleSheet(f"background:transparent; color:{C_TEXT3}; border:none; font-size:14px;")
+        btn_back.setCursor(Qt.PointingHandCursor)
+        btn_back.clicked.connect(lambda: self._goto(1))
+        lay.addWidget(btn_back, 0, Qt.AlignCenter)
 
-        # Seleciona valores padrão
-        self._goal_buttons[0].setChecked(True)  # Hipertrofia
-        self._freq_buttons[3].setChecked(True)  # 4x semana
+        # Seleciona masculino por padrão
+        self._gender_buttons[0].setChecked(True)
 
         return card
 
+    def _build_step3(self) -> QWidget:
+        """Passo 4 — Meta."""
+        card = _StepCard("🎯 SUA META", "Qual seu objetivo principal?")
+        lay = card.content_layout()
+
+        self._goal_buttons = []
+        goal_options = [
+            ("Hipertrofia", "Ganho de massa muscular"),
+            ("Emagrecimento", "Perda de gordura"),
+            ("Resistência", "Condicionamento físico"),
+            ("Saúde", "Qualidade de vida geral")
+        ]
+        
+        for title, subtitle in goal_options:
+            btn = self._create_goal_tile(title, subtitle)
+            btn.clicked.connect(lambda checked, b=btn: self._select_goal(b))
+            self._goal_buttons.append(btn)
+            lay.addWidget(btn)
+        
+        lay.addSpacing(20)
+        self._btn_finish = _primary_btn("Começar →")
+        self._btn_finish.clicked.connect(self._finish)
+        lay.addWidget(self._btn_finish)
+        
+        lay.addSpacing(10)
+        btn_back = QPushButton("Voltar")
+        btn_back.setStyleSheet(f"background:transparent; color:{C_TEXT3}; border:none; font-size:14px;")
+        btn_back.setCursor(Qt.PointingHandCursor)
+        btn_back.clicked.connect(lambda: self._goto(2))
+        lay.addWidget(btn_back, 0, Qt.AlignCenter)
+
+        # Seleciona hipertrofia por padrão
+        self._goal_buttons[0].setChecked(True)
+
+        return card
+
+    def _create_goal_tile(self, title: str, subtitle: str) -> QPushButton:
+        """Cria um tile de meta com título e subtítulo."""
+        btn = QPushButton()
+        btn.setCheckable(True)
+        btn.setFixedHeight(70)
+        btn.setCursor(Qt.PointingHandCursor)
+        
+        # Layout interno do botão
+        btn_layout = QVBoxLayout(btn)
+        btn_layout.setContentsMargins(20, 12, 20, 12)
+        btn_layout.setSpacing(4)
+        
+        title_lbl = QLabel(title)
+        title_lbl.setStyleSheet("color:#fff; font-size:16px; font-weight:700; background:transparent; border:none;")
+        btn_layout.addWidget(title_lbl)
+        
+        subtitle_lbl = QLabel(subtitle)
+        subtitle_lbl.setStyleSheet("color:#6b7280; font-size:13px; background:transparent; border:none;")
+        btn_layout.addWidget(subtitle_lbl)
+        
+        btn.setStyleSheet(
+            f"QPushButton {{"
+            f"  background:#1e1e1e; color:#fff;"
+            f"  border:2px solid {C_BORDER}; border-radius:12px;"
+            f"  text-align:left;"
+            f"}}"
+            f"QPushButton:hover {{"
+            f"  border-color:{C_GREEN}; background:#1a1a1a;"
+            f"}}"
+            f"QPushButton:checked {{"
+            f"  background:#1e1e1e; border:2px solid {C_GREEN};"
+            f"}}"
+            f"QPushButton:checked:hover {{"
+            f"  background:#1a1a1a;"
+            f"}}"
+        )
+        
+        return btn
+        """Passo 3 — Objetivos: Meta e Frequência com tiles selecionáveis."""
+        from PySide6.QtWidgets import QScrollArea, QButtonGroup
+        
+        card = _StepCard("Seus objetivos", "Passo 3 de 3 · Metas")
+        lay = card.content_layout()
+        
+        # Criar área de scroll que ocupa todo o espaço disponível
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QScrollArea.NoFrame)
+        scroll.setStyleSheet(
+            f"QScrollArea {{ background:{C_CARD}; border:none; }}"
+            f"QScrollBar:vertical {{"
+            f"  background:#1a1a1a; width:6px; border-radius:3px; margin:0px;"
+            f"}}"
+            f"QScrollBar::handle:vertical {{"
+            f"  background:#333; border-radius:3px; min-height:30px;"
+            f"}}"
+            f"QScrollBar::handle:vertical:hover {{"
+            f"  background:{C_GREEN};"
+            f"}}"
+            f"QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{"
+            f"  height:0px; background:none; border:none;"
+            f"}}"
+            f"QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {{"
+            f"  background:none;"
+            f"}}"
+        )
+        
+        # Widget de conteúdo dentro do scroll - TUDO vai aqui
+        scroll_content = QWidget()
+        scroll_content.setStyleSheet(f"background:{C_CARD}; border:none;")
+        content_layout = QVBoxLayout(scroll_content)
+        content_layout.setContentsMargins(0, 0, 8, 0)
+        content_layout.setSpacing(15)
+        
+        # 1. Label 'Objetivo'
+        content_layout.addWidget(_field_label("Objetivo"))
+        
+        # 2. Lista vertical de botões de objetivo
+        self._goal_buttons = []
+        goal_options = ["Hipertrofia", "Definição", "Força", "Saúde"]
+        
     # ------------------------------------------------------------------
     # Navegação interna
     # ------------------------------------------------------------------
@@ -482,54 +583,46 @@ class SetupScreen(QWidget):
         self._err0.hide()
         self._goto(1)
 
+    def _select_gender(self, selected_btn: QPushButton):
+        """Garante que apenas um botão de gênero esteja selecionado."""
+        for btn in self._gender_buttons:
+            if btn != selected_btn:
+                btn.setChecked(False)
+        selected_btn.setChecked(True)
+
     def _select_goal(self, selected_btn: QPushButton):
         """Garante que apenas um botão de objetivo esteja selecionado."""
         for btn in self._goal_buttons:
             if btn != selected_btn:
                 btn.setChecked(False)
+                btn.setGraphicsEffect(None)
         selected_btn.setChecked(True)
-        
-        # Adiciona efeito de glow ao botão selecionado
-        if selected_btn.isChecked():
-            _add_glow(selected_btn, C_GREEN, 25)
-        else:
-            selected_btn.setGraphicsEffect(None)
-
-    def _select_freq(self, selected_btn: QPushButton):
-        """Garante que apenas um botão de frequência esteja selecionado."""
-        for btn in self._freq_buttons:
-            if btn != selected_btn:
-                btn.setChecked(False)
-        selected_btn.setChecked(True)
-        
-        # Adiciona efeito de glow ao botão selecionado
-        if selected_btn.isChecked():
-            _add_glow(selected_btn, C_GREEN, 20)
-        else:
-            selected_btn.setGraphicsEffect(None)
 
     def _finish(self):
-        # Coleta o objetivo selecionado
-        selected_goal = "Hipertrofia"  # padrão
-        for btn in self._goal_buttons:
+        # Coleta o gênero selecionado
+        selected_gender = "male"
+        for btn in self._gender_buttons:
             if btn.isChecked():
-                selected_goal = btn.text()
+                selected_gender = btn.property("gender_value")
                 break
         
-        # Coleta a frequência selecionada
-        selected_freq = 4  # padrão
-        for i, btn in enumerate(self._freq_buttons):
+        # Coleta o objetivo selecionado
+        selected_goal = "Hipertrofia"
+        for btn in self._goal_buttons:
             if btn.isChecked():
-                selected_freq = i + 1
+                # Pega o texto do primeiro QLabel filho
+                title_lbl = btn.findChild(QLabel)
+                if title_lbl:
+                    selected_goal = title_lbl.text()
                 break
         
         data = {
             "name":      self._name.text().strip(),
-            "age":       self._age.value(),
             "weight":    self._weight.value(),
             "height":    self._height.value(),
+            "gender":    selected_gender,
             "goal":      selected_goal,
-            "frequency": selected_freq,
+            "frequency": 4,  # padrão
         }
         save_user_data(data)
         self.setup_complete.emit(data)

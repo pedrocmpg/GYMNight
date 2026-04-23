@@ -7,19 +7,20 @@ Paleta de cores e QSS global do GYMNight.
 # Paleta – hierarquia de superfície
 # ---------------------------------------------------------------------------
 
-C_BG            = "#161616"   # fundo da janela — mais escuro
-C_SURFACE       = "#161616"   # superfície principal
-C_CARD          = "#1e1e1e"   # cards gerais — visivelmente mais claro que o fundo
-C_STAT_CARD     = "#1e1e1e"   # stat cards — cor própria, independente do fundo
-C_CARD2         = "#272727"   # hover e inputs dentro dos cards
+C_BG            = "#0a0a0a"   # fundo da janela — mais escuro para contraste neon
+C_SURFACE       = "#0f0f0f"   # superfície principal
+C_CARD          = "#1a1a1a"   # cards gerais — visivelmente mais claro que o fundo
+C_STAT_CARD     = "#1a1a1a"   # stat cards — cor própria, independente do fundo
+C_CARD2         = "#222222"   # hover e inputs dentro dos cards
 
-C_BORDER        = "#383838"
+C_BORDER        = "#2a2a2a"
 
 C_GREEN         = "#a2ff00"
 C_GREEN_ACTIVE  = "#b5f542"   # hover / destaque
 C_GREEN_DK      = "#65a30d"
 C_GREEN_BG      = "#1a2e0a"
 C_ACCENT_MUTED  = "#1a3a00"   # seleção suave
+C_GREEN_GLOW    = "rgba(162, 255, 0, 0.5)"  # cor do glow neon
 
 C_TEXT          = "#ffffff"
 C_TEXT2         = "#6b7280"
@@ -90,7 +91,9 @@ QPushButton {{
     font-weight: 700;
     font-size: 15px;
 }}
-QPushButton:hover    {{ background-color: {C_GREEN_ACTIVE}; }}
+QPushButton:hover    {{ 
+    background-color: #8ad900;
+}}
 QPushButton:pressed  {{ background-color: {C_GREEN_DK}; }}
 QPushButton:disabled {{ background-color: {C_CARD2}; color: {C_TEXT3}; }}
 
@@ -100,7 +103,11 @@ QPushButton#ghost {{
     border: 2px solid {C_BORDER};
     border-radius: {RADIUS_MD}px;
 }}
-QPushButton#ghost:hover {{ border-color: {C_GREEN}; color: {C_TEXT}; }}
+QPushButton#ghost:hover {{ 
+    border-color: {C_GREEN}; 
+    color: {C_TEXT};
+    background-color: rgba(162, 255, 0, 0.08);
+}}
 
 QPushButton#danger {{
     background-color: transparent;
@@ -108,10 +115,13 @@ QPushButton#danger {{
     border: 2px solid {C_RED};
     border-radius: {RADIUS_MD}px;
 }}
-QPushButton#danger:hover {{ background-color: {C_RED_BG}; }}
+QPushButton#danger:hover {{ 
+    background-color: {C_RED_BG};
+    border-color: #dc2626;
+}}
 
 /* ── Inputs ───────────────────────────────────────────────────────────── */
-QLineEdit, QSpinBox, QComboBox {{
+QLineEdit, QSpinBox, QComboBox, QDoubleSpinBox {{
     background-color: {C_CARD};
     color: {C_TEXT};
     border: 2px solid {C_BORDER};
@@ -119,7 +129,9 @@ QLineEdit, QSpinBox, QComboBox {{
     padding: 12px 18px;
     font-size: 15px;
 }}
-QLineEdit:focus, QSpinBox:focus, QComboBox:focus {{ border-color: {C_GREEN}; }}
+QLineEdit:focus, QSpinBox:focus, QComboBox:focus, QDoubleSpinBox:focus {{ 
+    border-color: {C_GREEN}; 
+}}
 
 /* ── Scrollbar ────────────────────────────────────────────────────────── */
 QScrollBar:vertical {{
@@ -175,12 +187,12 @@ QLabel#stat_lbl {{ font-size: 13px; color: {C_TEXT3}; }}
 /* ── Frames ───────────────────────────────────────────────────────────── */
 QFrame#card {{
     background: {C_CARD};
-    border: 2px solid #555555;
+    border: 2px solid {C_BORDER};
     border-radius: {RADIUS_LG}px;
 }}
 QFrame#stat_card_container {{
     background: {C_STAT_CARD};
-    border: 1px solid #555555;
+    border: 1px solid {C_BORDER};
     border-radius: {RADIUS_LG}px;
 }}
 QFrame#sep {{
@@ -224,5 +236,19 @@ def shadow(widget: QWidget, blur: int = 20, opacity: int = 80, offset_y: int = 4
     eff.setBlurRadius(blur)
     eff.setColor(QColor(0, 0, 0, opacity))
     eff.setOffset(0, offset_y)
+    widget.setGraphicsEffect(eff)
+    return widget
+
+
+def neon_glow(widget: QWidget, color: str = C_GREEN, blur: int = 30, opacity: int = 180) -> QWidget:
+    """Adiciona efeito de glow neon verde a um widget."""
+    eff = QGraphicsDropShadowEffect(widget)
+    # Aplica blur reduzido mas mantém o widget visível
+    eff.setBlurRadius(int(blur * 0.37))
+    # Usa a cor do glow sem afetar a opacidade do widget
+    glow_color = QColor(color)
+    glow_color.setAlpha(int(opacity * 0.37))
+    eff.setColor(glow_color)
+    eff.setOffset(0, 0)
     widget.setGraphicsEffect(eff)
     return widget

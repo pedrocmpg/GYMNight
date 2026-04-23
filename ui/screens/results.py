@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (
 )
 
 from database import DatabaseConnection
-from ui.theme import C_BORDER, C_CARD, C_GREEN, C_TEXT, C_TEXT2, C_TEXT3, label, RADIUS_MD, RADIUS_SM
+from ui.theme import C_BORDER, C_CARD, C_GREEN, C_TEXT, C_TEXT2, C_TEXT3, label, RADIUS_MD, RADIUS_SM, neon_glow
 
 
 # Paleta de cores alinhada ao tema escuro
@@ -51,9 +51,10 @@ class _ChartCard(QWidget):
     def __init__(self, title: str, parent=None):
         super().__init__(parent)
         self.setStyleSheet(
-            f"QWidget {{ background:{_CARD_BG}; border:1px solid {C_BORDER};"
+            f"QWidget {{ background:{_CARD_BG}; border:2px solid {C_GREEN};"
             f"border-radius:{RADIUS_MD}px; }}"
         )
+        neon_glow(self, C_GREEN, blur=81, opacity=405)
         lay = QVBoxLayout(self)
         lay.setContentsMargins(16, 14, 16, 14)
         lay.setSpacing(8)

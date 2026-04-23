@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 from engine import Exercise, Routine
 from ui.theme import (
     C_BG, C_BORDER, C_CARD, C_CARD2, C_GREEN, C_GREEN_BG,
-    C_TEXT, C_TEXT2, C_TEXT3, card, label, separator, shadow,
+    C_TEXT, C_TEXT2, C_TEXT3, card, label, separator, shadow, neon_glow,
     RADIUS_MD, RADIUS_LG,
 )
 
@@ -29,7 +29,7 @@ class StatCard(QFrame):
         super().__init__(parent)
         self.setObjectName("stat_card_container")
         self.setMinimumWidth(160)
-        shadow(self, blur=22, opacity=130, offset_y=4)
+        neon_glow(self, C_GREEN, blur=68, opacity=324)
         lay = QVBoxLayout(self)
         lay.setContentsMargins(16, 16, 16, 16)
         lay.setSpacing(6)
@@ -162,8 +162,8 @@ class RoutineCard(QFrame):
         self._root = QVBoxLayout(self)
         self._root.setContentsMargins(0, 0, 0, 0)
         self._root.setSpacing(0)
-        self.setStyleSheet(f"QFrame#card {{ border: 1px solid #555555; border-radius: {RADIUS_LG}px; background: {C_CARD}; }}")
-        shadow(self, blur=22, opacity=130, offset_y=4)
+        self.setStyleSheet(f"QFrame#card {{ border: 2px solid {C_GREEN}; border-radius: {RADIUS_LG}px; background: {C_CARD}; }}")
+        neon_glow(self, C_GREEN, blur=81, opacity=405)
 
         # Header
         hdr = QWidget()
@@ -206,7 +206,7 @@ class RoutineCard(QFrame):
             }}
             QPushButton:hover {{
                 border-color: {C_GREEN};
-                background: {C_GREEN_BG};
+                background: rgba(162, 255, 0, 0.08);
             }}
         """)
         edit_btn.clicked.connect(lambda: self.edit_clicked.emit(self._routine))
@@ -218,7 +218,8 @@ class RoutineCard(QFrame):
         start_btn.setIcon(qta.icon("fa5s.play", color="#000000", options=[{"scale_factor": 0.6}]))
         start_btn.setFixedSize(56, 48)
         start_btn.setCursor(Qt.PointingHandCursor)
-        start_btn.setStyleSheet(f"background:{C_GREEN}; border-radius:{RADIUS_MD}px; padding:0;")
+        start_btn.setStyleSheet(f"background:{C_GREEN}; border-radius:{RADIUS_MD}px; padding:0;"
+                                f"QPushButton:hover {{ background:#8ad900; }}")
         start_btn.clicked.connect(lambda: self.start_clicked.emit(self._routine))
         hdr_lay.addWidget(start_btn)
 
