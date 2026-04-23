@@ -70,31 +70,36 @@ class _StatCard(QFrame):
         self.setStyleSheet("QFrame { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:12px; }")
         self.setMinimumWidth(200)
         
+        from ui.theme import neon_glow
+        neon_glow(self, "#a2ff00", blur=20, opacity=60)
+        
         lay = QVBoxLayout(self)
-        lay.setContentsMargins(20, 20, 20, 20)
-        lay.setSpacing(12)
+        lay.setContentsMargins(16, 16, 16, 16)
+        lay.setSpacing(8)
         
         hdr = QHBoxLayout()
-        hdr.setSpacing(10)
+        hdr.setSpacing(8)
         
-        icon = QLabel()
-        icon.setPixmap(qta.icon(icon_name, color=C_GREEN).pixmap(20, 20))
-        hdr.addWidget(icon)
+        icon_container = QLabel()
+        icon_container.setFixedSize(18, 18)
+        icon_container.setAlignment(Qt.AlignCenter)
+        icon_container.setPixmap(qta.icon(icon_name, color=C_GREEN).pixmap(16, 16))
+        hdr.addWidget(icon_container)
         
         title_lbl = QLabel(title)
-        title_lbl.setStyleSheet("color:#6b7280; font-size:13px; font-weight:600; background:transparent; border:none;")
+        title_lbl.setStyleSheet("color:#6b7280; font-size:12px; font-weight:500; background:transparent; border:none;")
         hdr.addWidget(title_lbl)
         hdr.addStretch()
         
         lay.addLayout(hdr)
         
         self._val = QLabel(value)
-        self._val.setStyleSheet("color:#fff; font-size:36px; font-weight:800; background:transparent; border:none;")
+        self._val.setStyleSheet("color:#fff; font-size:32px; font-weight:800; background:transparent; border:none;")
         lay.addWidget(self._val)
         
         if subtitle:
             sub_lbl = QLabel(subtitle)
-            sub_lbl.setStyleSheet("color:#6b7280; font-size:12px; background:transparent; border:none;")
+            sub_lbl.setStyleSheet("color:#6b7280; font-size:11px; background:transparent; border:none;")
             lay.addWidget(sub_lbl)
     
     def set_value(self, v: str):
@@ -115,11 +120,14 @@ class _WeekDayIcon(QWidget):
         icon.setAlignment(Qt.AlignCenter)
         
         if active:
-            icon.setPixmap(qta.icon("fa5s.bolt", color="#000").pixmap(24, 24))
-            icon.setStyleSheet(f"background:{C_GREEN}; border-radius:24px;")
+            from ui.theme import neon_glow
+            icon.setPixmap(qta.icon("fa5s.bolt", color="#1a1a1a").pixmap(24, 24))
+            icon.setStyleSheet(f"background:{C_GREEN}; border-radius:12px;")
+            # Efeito neon mais forte para o ícone ativo
+            neon_glow(icon, C_GREEN, blur=60, opacity=400)
         else:
             icon.setText("—")
-            icon.setStyleSheet("background:#1a1a1a; color:#3a3a3a; border:1px solid #2a2a2a; border-radius:24px; font-size:20px;")
+            icon.setStyleSheet("background:#1a1a1a; color:#3a3a3a; border:1px solid #2a2a2a; border-radius:12px; font-size:20px;")
         
         lay.addWidget(icon)
         
@@ -206,7 +214,7 @@ class DashboardTab(QWidget):
         self._stat_treinos   = _StatCard("fa5s.dumbbell", "Treinos esta semana", "0", "Meta: 5")
         self._stat_calorias  = _StatCard("fa5s.fire", "Calorias queimadas", "0", "kcal")
         self._stat_volume    = _StatCard("fa5s.weight", "Volume total", "0k", "kg levantados")
-        self._stat_sequencia = _StatCard("fa5s.chart-line", "Sequência", "0", "dias seguidos")
+        self._stat_sequencia = _StatCard("fa5s.chart-line", "Streak", "0", "dias seguidos")
         
         for s in [self._stat_treinos, self._stat_calorias, self._stat_volume, self._stat_sequencia]:
             stats_row.addWidget(s)
@@ -215,33 +223,31 @@ class DashboardTab(QWidget):
 
         act_card = QFrame()
         act_card.setStyleSheet(f"QFrame {{ background:#1a1a1a; border:1px solid #2a2a2a; border-radius:{RADIUS_LG}px; }}")
-        act_lay = QVBoxLayout(act_card)
-        act_lay.setContentsMargins(24, 24, 24, 24)
-        act_lay.setSpacing(20)
+        from ui.theme import neon_glow
+        neon_glow(act_card, "#a2ff00", blur=20, opacity=60)
+        
+        self._act_lay = QVBoxLayout(act_card)
+        self._act_lay.setContentsMargins(24, 24, 24, 24)
+        self._act_lay.setSpacing(20)
         
         act_title = QLabel("ATIVIDADE SEMANAL")
         act_title.setStyleSheet("color:#fff; font-size:15px; font-weight:700; background:transparent; border:none;")
-        act_lay.addWidget(act_title)
+        self._act_lay.addWidget(act_title)
         
-        days_row = QHBoxLayout()
-        days_row.setSpacing(12)
+        # Container para os dias da semana (será recriado no refresh)
+        self._days_container = QWidget()
+        self._days_layout = QHBoxLayout(self._days_container)
+        self._days_layout.setSpacing(12)
+        self._days_layout.setContentsMargins(0, 0, 0, 0)
+        self._act_lay.addWidget(self._days_container)
         
-        active_rows = self._db.fetchall(
-            "SELECT CAST(strftime('%w', datetime(started_at, 'unixepoch')) AS INTEGER) AS dow "
-            "FROM workout_sessions "
-            "WHERE started_at >= strftime('%s', 'now', 'weekday 0', '-7 days')"
-        )
-        active_dow = {r["dow"] for r in active_rows} if active_rows else set()
-        loop_to_dow = [1, 2, 3, 4, 5, 6, 0]
-        
-        for i, d in enumerate(["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]):
-            days_row.addWidget(_WeekDayIcon(d, loop_to_dow[i] in active_dow))
-        
-        act_lay.addLayout(days_row)
         lay.addWidget(act_card)
 
         rec_card = QFrame()
         rec_card.setStyleSheet(f"QFrame {{ background:#1a1a1a; border:1px solid #2a2a2a; border-radius:{RADIUS_LG}px; }}")
+        from ui.theme import neon_glow
+        neon_glow(rec_card, "#a2ff00", blur=20, opacity=60)
+        
         self._rec_lay = QVBoxLayout(rec_card)
         self._rec_lay.setContentsMargins(24, 24, 24, 24)
         self._rec_lay.setSpacing(0)
@@ -260,12 +266,35 @@ class DashboardTab(QWidget):
 
     def refresh(self):
         self._refresh_stats()
+        self._refresh_weekly_activity()
         self._refresh_recent()
+    
+    def _refresh_weekly_activity(self):
+        """Atualiza os ícones da atividade semanal."""
+        # Remove todos os widgets do container
+        while self._days_layout.count():
+            item = self._days_layout.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+        
+        # Busca os dias com treinos na semana atual
+        active_rows = self._db.fetchall(
+            "SELECT CAST(strftime('%w', datetime(started_at, 'unixepoch')) AS INTEGER) AS dow "
+            "FROM workout_sessions "
+            "WHERE started_at >= strftime('%s', 'now', 'weekday 0', '-7 days')"
+        )
+        active_dow = {r["dow"] for r in active_rows} if active_rows else set()
+        loop_to_dow = [1, 2, 3, 4, 5, 6, 0]
+        
+        # Recria os ícones
+        for i, d in enumerate(["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"]):
+            self._days_layout.addWidget(_WeekDayIcon(d, loop_to_dow[i] in active_dow))
 
     def on_workout_finished(self, payload: dict):
         if not payload:
             return
         self._refresh_stats()
+        self._refresh_weekly_activity()
         self._refresh_recent()
 
     def _refresh_stats(self):
@@ -281,7 +310,43 @@ class DashboardTab(QWidget):
         calorias = int(vol * 5)
         self._stat_calorias.set_value(f"{calorias:,}".replace(",", "."))
 
-        self._stat_sequencia.set_value("0")
+        # Calcula a streak (sequência de dias seguidos)
+        streak = self._calculate_streak()
+        self._stat_sequencia.set_value(str(streak))
+    
+    def _calculate_streak(self) -> int:
+        """Calcula quantos dias seguidos o usuário treinou."""
+        # Busca todas as datas únicas de treinos, ordenadas da mais recente para a mais antiga
+        rows = self._db.fetchall(
+            """SELECT DISTINCT date(started_at, 'unixepoch') AS workout_date
+               FROM workout_sessions
+               ORDER BY workout_date DESC"""
+        )
+        
+        if not rows:
+            return 0
+        
+        # Converte para lista de datas
+        workout_dates = [datetime.datetime.strptime(r["workout_date"], "%Y-%m-%d").date() for r in rows]
+        today = datetime.datetime.now().date()
+        
+        # Se não treinou hoje nem ontem, streak é 0
+        if workout_dates[0] < today - datetime.timedelta(days=1):
+            return 0
+        
+        # Conta dias consecutivos
+        streak = 0
+        expected_date = today if workout_dates[0] == today else today - datetime.timedelta(days=1)
+        
+        for workout_date in workout_dates:
+            if workout_date == expected_date:
+                streak += 1
+                expected_date -= datetime.timedelta(days=1)
+            elif workout_date < expected_date:
+                # Quebrou a sequência
+                break
+        
+        return streak
 
     def _refresh_recent(self):
         while self._rec_lay.count() > 1:
