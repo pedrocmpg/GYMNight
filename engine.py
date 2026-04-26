@@ -244,6 +244,47 @@ class RoutineManager:
         self._db = db
         self._norm = NormalizationEngine(db)
 
+    def calculate_session_calories(self, session_id: int, user_weight_kg: float = 70.0) -> float:
+        """
+        Calcula calorias totais de uma sessão usando a fórmula MET.
+        Fórmula: Calorias = (MET × Peso_kg × Tempo_min) / 60
+        Tempo por repetição: 4 segundos (0.0667 minutos)
+        
+        Args:
+            session_id: ID da sessão
+            user_weight_kg: Peso do usuário em kg (padrão 70kg)
+            
+        Returns:
+            Total de calorias queimadas na sessão
+        """
+        rows = self._db.fetchall(
+            """
+            SELECT wl.reps, emv.met_value
+            FROM workout_logs wl
+            LEFT JOIN exercise_met_values emv ON wl.exercise_id = emv.exercise_id
+            WHERE wl.session_id = ? AND wl.set_type != 'W'
+            """,
+            (session_id,),
+        )
+        
+        total_calories = 0.0
+        for row in rows:
+            reps = row["reps"]
+            met_value = row["met_value"]
+            
+            if met_value is None:
+                # Se não tiver MET, usa valor padrão conservador
+                met_value = 5.0
+            
+            # Tempo em minutos: 4 segundos por rep
+            time_min = reps * 4.0 / 60.0
+            
+            # Fórmula MET: (MET × Peso_kg × Tempo_min) / 60
+            calories = (met_value * user_weight_kg * time_min) / 60.0
+            total_calories += calories
+        
+        return total_calories
+
     def create_routine(self, name: str, exercise_ids: list[int]) -> Routine:
         routine_id = self._db.execute_write(
             "INSERT INTO routines (name) VALUES (?)", (name.strip(),)

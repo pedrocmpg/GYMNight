@@ -5,7 +5,7 @@ Widgets reutilizáveis: StatCard, WeekDayDot, MuscleBar, RoutineCard.
 from __future__ import annotations
 
 import qtawesome as qta
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, Signal, QPropertyAnimation, QEasingCurve, Property
 from PySide6.QtGui import QColor, QFont, QPainter, QPainterPath, QBrush
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget,
@@ -154,9 +154,19 @@ class RoutineCard(QFrame):
         self._routine   = routine
         self._exercises = exercises
         self._expanded  = False
+        self._content_height = 0
         self.setObjectName("card")
         self.setCursor(Qt.PointingHandCursor)
         self._build()
+
+    def get_content_height(self):
+        return self._content_height
+
+    def set_content_height(self, height):
+        self._content_height = height
+        self._content.setMaximumHeight(height)
+
+    contentHeight = Property(int, get_content_height, set_content_height)
 
     def _build(self):
         self._root = QVBoxLayout(self)
@@ -232,7 +242,7 @@ class RoutineCard(QFrame):
 
         # Conteúdo expansível
         self._content = QWidget()
-        self._content.hide()
+        self._content.setMaximumHeight(0)
         c_lay = QVBoxLayout(self._content)
         c_lay.setContentsMargins(16, 0, 16, 14)
         c_lay.setSpacing(0)
@@ -256,10 +266,30 @@ class RoutineCard(QFrame):
             c_lay.addSpacing(4)
 
         self._root.addWidget(self._content)
+        
+        # Criar animação
+        self._animation = QPropertyAnimation(self, b"contentHeight")
+        self._animation.setDuration(300)
+        self._animation.setEasingCurve(QEasingCurve.InOutCubic)
+        
         hdr.mousePressEvent = lambda e: self._toggle()
 
     def _toggle(self):
         self._expanded = not self._expanded
-        self._content.setVisible(self._expanded)
+        
+        # Calcular altura do conteúdo
+        if self._expanded:
+            # Temporariamente mostrar para calcular altura
+            self._content.setMaximumHeight(16777215)
+            target_height = self._content.sizeHint().height()
+        else:
+            target_height = 0
+        
+        # Animar
+        self._animation.setStartValue(self._content_height)
+        self._animation.setEndValue(target_height)
+        self._animation.start()
+        
+        # Atualizar ícone
         icon_name = "fa5s.chevron-down" if self._expanded else "fa5s.chevron-right"
         self._arrow.setPixmap(qta.icon(icon_name, color=C_TEXT3).pixmap(14, 14))

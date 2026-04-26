@@ -307,8 +307,51 @@ class DashboardTab(QWidget):
         vol = float(row2["v"]) if row2 else 0.0
         self._stat_volume.set_value(f"{vol/1000:.1f}k" if vol >= 1000 else f"{vol:.0f}")
 
-        calorias = int(vol * 5)
-        self._stat_calorias.set_value(f"{calorias:,}".replace(",", "."))
+        # Calcula calorias usando a fórmula MET correta
+        # Busca todas as sessões da semana e soma as calorias
+        session_rows = self._db.fetchall(
+            "SELECT id FROM workout_sessions WHERE started_at >= strftime('%s','now','-7 days')"
+        )
+        
+        total_calories = 0.0
+        for session_row in session_rows:
+            session_id = session_row["id"]
+            
+            # Busca peso do usuário (se disponível no user_data.json)
+            user_weight = 70.0  # padrão
+            try:
+                import json
+                from pathlib import Path
+                user_data_path = Path("user_data.json")
+                if user_data_path.exists():
+                    with open(user_data_path, "r", encoding="utf-8") as f:
+                        user_data = json.load(f)
+                        user_weight = float(user_data.get("weight", 70.0))
+            except:
+                pass
+            
+            # Calcula calorias da sessão usando fórmula MET
+            log_rows = self._db.fetchall(
+                """
+                SELECT wl.reps, emv.met_value
+                FROM workout_logs wl
+                LEFT JOIN exercise_met_values emv ON wl.exercise_id = emv.exercise_id
+                WHERE wl.session_id = ? AND wl.set_type != 'W'
+                """,
+                (session_id,),
+            )
+            
+            for log_row in log_rows:
+                reps = log_row["reps"]
+                met_value = log_row["met_value"] if log_row["met_value"] else 5.0
+                
+                # Fórmula MET: (MET × Peso_kg × Tempo_min) / 60
+                # Tempo: 4 segundos por rep = 0.0667 min/rep
+                time_min = reps * 4.0 / 60.0
+                calories = (met_value * user_weight * time_min) / 60.0
+                total_calories += calories
+        
+        self._stat_calorias.set_value(f"{int(total_calories):,}".replace(",", "."))
 
         # Calcula a streak (sequência de dias seguidos)
         streak = self._calculate_streak()

@@ -389,73 +389,151 @@ class WorkoutsTab(QWidget):
 
     def _build_create_page(self) -> QWidget:
         page = QWidget()
+        page.setStyleSheet("background: #1e1e1e;")
         outer = QVBoxLayout(page)
-        outer.setContentsMargins(24, 24, 24, 24)
-        outer.setSpacing(8)
+        outer.setContentsMargins(40, 32, 40, 32)
+        outer.setSpacing(24)
 
-        # Cabeçalho com botão voltar
+        # Cabeçalho com botão fechar (X)
         hdr = QHBoxLayout()
-        back_btn = QPushButton("← Voltar")
-        back_btn.setObjectName("ghost")
-        back_btn.setFixedWidth(90)
-        back_btn.clicked.connect(lambda: self._stack.setCurrentIndex(0))
-        hdr.addWidget(back_btn)
         hdr.addStretch()
+        close_btn = QPushButton("✕")
+        close_btn.setFixedSize(36, 36)
+        close_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                color: #888;
+                border: none;
+                font-size: 24px;
+                font-weight: 300;
+            }
+            QPushButton:hover { color: #fff; }
+        """)
+        close_btn.clicked.connect(lambda: self._stack.setCurrentIndex(0))
+        hdr.addWidget(close_btn)
         outer.addLayout(hdr)
 
-        outer.addWidget(label("CRIAR TREINO", "h2"))
-        outer.addWidget(label("Monte seu treino personalizado com exercícios, séries e repetições.", "sub"))
-        outer.addWidget(separator())
+        # Título
+        title = QLabel("CRIAR TREINO")
+        title.setStyleSheet("font-size: 36px; font-weight: 800; color: #fff; letter-spacing: 2px;")
+        outer.addWidget(title)
+
+        # Subtítulo
+        subtitle = QLabel("Monte seu treino personalizado com exercícios, séries e repetições.")
+        subtitle.setStyleSheet("font-size: 15px; color: #888; margin-bottom: 12px;")
+        outer.addWidget(subtitle)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
         form_w = QWidget()
+        form_w.setStyleSheet("background: transparent;")
         self._form_lay = QVBoxLayout(form_w)
-        self._form_lay.setSpacing(4)
+        self._form_lay.setSpacing(20)
+        self._form_lay.setContentsMargins(0, 0, 0, 0)
         scroll.setWidget(form_w)
         outer.addWidget(scroll)
 
-        # Nome
-        self._form_lay.addWidget(label("Nome do treino", "h3"))
+        # Nome do treino
+        name_lbl = QLabel("Nome do treino")
+        name_lbl.setStyleSheet("font-size: 15px; font-weight: 600; color: #fff; margin-top: 4px;")
+        self._form_lay.addWidget(name_lbl)
+        
         self._name = QLineEdit()
         self._name.setPlaceholderText("Ex: Treino D — Ombro")
+        self._name.setFixedHeight(56)
+        self._name.setStyleSheet("""
+            QLineEdit {
+                background: #0a0a0a;
+                color: #fff;
+                border: 2px solid #a3e635;
+                border-radius: 10px;
+                padding: 0 18px;
+                font-size: 15px;
+            }
+            QLineEdit:focus { border-color: #a3e635; }
+        """)
         self._form_lay.addWidget(self._name)
 
         # Dia + Músculos
         row = QHBoxLayout()
-        row.setSpacing(12)
+        row.setSpacing(20)
         for attr, lbl_txt, ph in [
             ("_days",    "Dia(s)",    "Ex: Segunda"),
             ("_muscles", "Músculos",  "Ex: Ombro & Trapézio"),
         ]:
             col = QVBoxLayout()
-            col.setSpacing(4)
-            col.addWidget(label(lbl_txt, "h3"))
+            col.setSpacing(10)
+            lbl = QLabel(lbl_txt)
+            lbl.setStyleSheet("font-size: 15px; font-weight: 600; color: #fff;")
+            col.addWidget(lbl)
             edit = QLineEdit()
             edit.setPlaceholderText(ph)
+            edit.setFixedHeight(56)
+            edit.setStyleSheet("""
+                QLineEdit {
+                    background: #0a0a0a;
+                    color: #888;
+                    border: 1px solid #2a2a2a;
+                    border-radius: 10px;
+                    padding: 0 18px;
+                    font-size: 14px;
+                }
+                QLineEdit:focus { border-color: #a3e635; }
+            """)
             setattr(self, attr, edit)
             col.addWidget(edit)
             row.addLayout(col)
         self._form_lay.addLayout(row)
 
         # Exercícios
+        ex_lbl = QLabel("Exercícios")
+        ex_lbl.setStyleSheet("font-size: 15px; font-weight: 600; color: #fff; margin-top: 8px;")
+        self._form_lay.addWidget(ex_lbl)
+        
         self._ex_widgets: list[dict] = []
-        self._form_lay.addWidget(label("Exercícios", "h3"))
         self._ex_container = QVBoxLayout()
-        self._ex_container.setSpacing(10)
+        self._ex_container.setSpacing(16)
         self._form_lay.addLayout(self._ex_container)
         self._add_exercise_block()
 
-        add_ex = QPushButton(" Adicionar exercício")
-        add_ex.setIcon(qta.icon("fa5s.plus", color=C_TEXT2, options=[{"scale_factor": 0.6}]))
-        add_ex.setObjectName("ghost")
+        # Botão adicionar exercício
+        add_ex = QPushButton("＋  Adicionar exercício")
+        add_ex.setFixedHeight(50)
+        add_ex.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                color: #888;
+                border: 1px dashed #3a3a3a;
+                border-radius: 10px;
+                font-size: 15px;
+                font-weight: 500;
+            }
+            QPushButton:hover { 
+                border-color: #a3e635; 
+                color: #a3e635; 
+            }
+        """)
         add_ex.clicked.connect(self._add_exercise_block)
         self._form_lay.addWidget(add_ex)
 
-        save = QPushButton(" Salvar Treino")
-        save.setIcon(qta.icon("fa5s.save", color="#000000"))
-        save.setMinimumHeight(44)
+        # Botão Salvar Treino
+        save = QPushButton("Salvar Treino")
+        save.setMinimumHeight(58)
+        save.setStyleSheet("""
+            QPushButton {
+                background: #a3e635;
+                color: #000000;
+                border: none;
+                border-radius: 10px;
+                font-size: 16px;
+                font-weight: 700;
+                letter-spacing: 0.5px;
+            }
+            QPushButton:hover { background: #bef264; }
+            QPushButton:pressed { background: #8bc924; }
+        """)
         save.clicked.connect(self._save_workout)
         outer.addWidget(save)
 
@@ -464,26 +542,115 @@ class WorkoutsTab(QWidget):
     def _add_exercise_block(self):
         idx = len(self._ex_widgets) + 1
         block = QFrame()
-        block.setObjectName("card")
+        block.setStyleSheet("""
+            QFrame {
+                background: #0a0a0a;
+                border: 1px solid #2a2a2a;
+                border-radius: 10px;
+            }
+        """)
         b_lay = QVBoxLayout(block)
-        b_lay.setContentsMargins(12, 12, 12, 12)
-        b_lay.setSpacing(8)
-        b_lay.addWidget(label(f"Exercício {idx}", "sub"))
+        b_lay.setContentsMargins(20, 18, 20, 18)
+        b_lay.setSpacing(14)
+        
+        # Título do exercício
+        ex_title = QLabel(f"Exercício {idx}")
+        ex_title.setStyleSheet("font-size: 13px; color: #666; font-weight: 500;")
+        b_lay.addWidget(ex_title)
 
+        # Campo nome do exercício
         name_edit = ExerciseLineEdit(self._norm, block)
+        name_edit.setPlaceholderText("Nome do exercício")
+        name_edit.setFixedHeight(52)
+        name_edit.setStyleSheet("""
+            QLineEdit {
+                background: #1a1a1a;
+                color: #fff;
+                border: 1px solid #2a2a2a;
+                border-radius: 8px;
+                padding: 0 16px;
+                font-size: 14px;
+            }
+            QLineEdit:focus { border-color: #a3e635; }
+        """)
         b_lay.addWidget(name_edit)
 
+        # Séries, Reps, Descanso
         row = QHBoxLayout()
+        row.setSpacing(14)
+        
+        # Séries
+        series_col = QVBoxLayout()
+        series_col.setSpacing(8)
+        series_lbl = QLabel("Séries")
+        series_lbl.setStyleSheet("font-size: 13px; color: #fff; font-weight: 600;")
+        series_col.addWidget(series_lbl)
         series = QSpinBox()
         series.setRange(1, 20)
         series.setValue(3)
+        series.setFixedHeight(48)
+        series.setStyleSheet("""
+            QSpinBox {
+                background: #1a1a1a;
+                color: #fff;
+                border: 1px solid #2a2a2a;
+                border-radius: 8px;
+                padding: 0 12px;
+                font-size: 16px;
+                font-weight: 600;
+            }
+            QSpinBox:focus { border-color: #a3e635; }
+            QSpinBox::up-button, QSpinBox::down-button { width: 0px; }
+        """)
+        series_col.addWidget(series)
+        row.addLayout(series_col)
+        
+        # Reps
+        reps_col = QVBoxLayout()
+        reps_col.setSpacing(8)
+        reps_lbl = QLabel("Reps")
+        reps_lbl.setStyleSheet("font-size: 13px; color: #fff; font-weight: 600;")
+        reps_col.addWidget(reps_lbl)
         reps = QLineEdit("10-12")
+        reps.setFixedHeight(48)
+        reps.setStyleSheet("""
+            QLineEdit {
+                background: #1a1a1a;
+                color: #fff;
+                border: 1px solid #2a2a2a;
+                border-radius: 8px;
+                padding: 0 12px;
+                font-size: 16px;
+                font-weight: 600;
+            }
+            QLineEdit:focus { border-color: #a3e635; }
+        """)
+        reps_col.addWidget(reps)
+        row.addLayout(reps_col)
+        
+        # Descanso
+        rest_col = QVBoxLayout()
+        rest_col.setSpacing(8)
+        rest_lbl = QLabel("Descanso")
+        rest_lbl.setStyleSheet("font-size: 13px; color: #fff; font-weight: 600;")
+        rest_col.addWidget(rest_lbl)
         rest = QLineEdit("60s")
-        for w, lbl_txt in [(series, "Séries"), (reps, "Reps"), (rest, "Descanso")]:
-            col = QVBoxLayout()
-            col.addWidget(label(lbl_txt, "sub"))
-            col.addWidget(w)
-            row.addLayout(col)
+        rest.setFixedHeight(48)
+        rest.setStyleSheet("""
+            QLineEdit {
+                background: #1a1a1a;
+                color: #fff;
+                border: 1px solid #2a2a2a;
+                border-radius: 8px;
+                padding: 0 12px;
+                font-size: 16px;
+                font-weight: 600;
+            }
+            QLineEdit:focus { border-color: #a3e635; }
+        """)
+        rest_col.addWidget(rest)
+        row.addLayout(rest_col)
+        
         b_lay.addLayout(row)
 
         self._ex_container.addWidget(block)
