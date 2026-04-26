@@ -4,18 +4,17 @@ Entry point da aplicação.
 """
 import sys
 
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication
 
-from ui.theme import DARK_QSS
-from ui.window import MainWindow
+from src.ui.theme import DARK_QSS
+from src.ui.window import MainWindow
 
 
 def main():
     app = QApplication(sys.argv)
 
     # Escala global 1.5x — fonte base de 20px (era 13px)
-    from PySide6.QtGui import QFont, QFontDatabase
-
     font = QFont("Segoe UI")
     font.setWeight(QFont.Medium)
     font.setWordSpacing(0)

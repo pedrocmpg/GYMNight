@@ -1,7 +1,11 @@
 """
-Backward compatibility wrapper for engine module
+Core business logic module
 """
-from src.core.engine import NormalizationEngine, PerformanceAnalyzer, RoutineManager
+from src.core.engine import (
+    NormalizationEngine,
+    PerformanceAnalyzer,
+    RoutineManager,
+)
 from src.core.models import (
     Exercise,
     ExerciseMatch,
