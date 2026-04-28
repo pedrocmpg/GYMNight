@@ -65,7 +65,7 @@ class _HeroBanner(QWidget):
 
 
 class _StatCard(QFrame):
-    def __init__(self, icon_name: str, title: str, value: str, subtitle: str = "", parent=None):
+    def __init__(self, icon_name: str, title: str, value: str, unit: str = "", parent=None):
         super().__init__(parent)
         self.setStyleSheet("QFrame { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:12px; }")
         self.setMinimumWidth(200)
@@ -75,7 +75,7 @@ class _StatCard(QFrame):
         
         lay = QVBoxLayout(self)
         lay.setContentsMargins(16, 16, 16, 16)
-        lay.setSpacing(8)
+        lay.setSpacing(12)
         
         hdr = QHBoxLayout()
         hdr.setSpacing(8)
@@ -87,20 +87,31 @@ class _StatCard(QFrame):
         hdr.addWidget(icon_container)
         
         title_lbl = QLabel(title)
-        title_lbl.setStyleSheet("color:#6b7280; font-size:12px; font-weight:500; background:transparent; border:none;")
+        title_lbl.setStyleSheet("color:#6b7280; font-size:13px; font-weight:500; font-family:sans-serif; background:transparent; border:none;")
         hdr.addWidget(title_lbl)
         hdr.addStretch()
         
         lay.addLayout(hdr)
         
-        self._val = QLabel(value)
-        self._val.setStyleSheet("color:#fff; font-size:32px; font-weight:800; background:transparent; border:none;")
-        lay.addWidget(self._val)
+        # Container horizontal para número + unidade
+        value_container = QHBoxLayout()
+        value_container.setSpacing(8)
+        value_container.setAlignment(Qt.AlignLeft | Qt.AlignBaseline)
         
-        if subtitle:
-            sub_lbl = QLabel(subtitle)
-            sub_lbl.setStyleSheet("color:#6b7280; font-size:11px; background:transparent; border:none;")
-            lay.addWidget(sub_lbl)
+        self._val = QLabel(value)
+        self._val.setStyleSheet("color:#fff; font-size:36px; font-weight:800; background:transparent; border:none;")
+        value_container.addWidget(self._val)
+        
+        if unit:
+            self._unit = QLabel(unit)
+            self._unit.setStyleSheet("color:#9ca3af; font-size:25px; font-weight:500; font-family:sans-serif; background:transparent; border:none;")
+            value_container.addWidget(self._unit)
+        else:
+            self._unit = None
+        
+        value_container.addStretch()
+        lay.addLayout(value_container)
+        lay.addStretch()
     
     def set_value(self, v: str):
         self._val.setText(v)
@@ -131,9 +142,9 @@ class _WeekDayIcon(QWidget):
         
         lay.addWidget(icon)
         
-        day_lbl = QLabel(day)
+        day_lbl = QLabel(day.upper())
         day_lbl.setAlignment(Qt.AlignCenter)
-        day_lbl.setStyleSheet("color:#6b7280; font-size:12px; background:transparent; border:none;")
+        day_lbl.setStyleSheet("color:#6b7280; font-size:12px; font-weight:500; font-family:sans-serif; background:transparent; border:none;")
         lay.addWidget(day_lbl)
 
 
@@ -153,14 +164,14 @@ class _WorkoutItem(QWidget):
         info.addWidget(name_lbl)
         
         sub_lbl = QLabel(subtitle)
-        sub_lbl.setStyleSheet("color:#6b7280; font-size:13px; background:transparent; border:none;")
+        sub_lbl.setStyleSheet("color:#6b7280; font-size:13px; font-weight:500; font-family:sans-serif; background:transparent; border:none;")
         info.addWidget(sub_lbl)
         
         lay.addLayout(info)
         lay.addStretch()
         
         dur_lbl = QLabel(duration)
-        dur_lbl.setStyleSheet("color:#6b7280; font-size:13px; background:transparent; border:none;")
+        dur_lbl.setStyleSheet("color:#6b7280; font-size:13px; font-weight:500; font-family:sans-serif; background:transparent; border:none;")
         lay.addWidget(dur_lbl)
 
 
@@ -202,7 +213,7 @@ class DashboardTab(QWidget):
         hero_lay.addWidget(self.banner_label)
         
         self._sub_label = QLabel("")
-        self._sub_label.setStyleSheet("font-size:13px; color:#9ca3af; background:transparent; border:none;")
+        self._sub_label.setStyleSheet("font-size:14px; color:#9ca3af; letter-spacing:1px; font-family:sans-serif; background:transparent; border:none;")
         hero_lay.addWidget(self._sub_label)
         hero_lay.addStretch()
         
@@ -211,10 +222,10 @@ class DashboardTab(QWidget):
         stats_row = QHBoxLayout()
         stats_row.setSpacing(16)
         
-        self._stat_treinos   = _StatCard("fa5s.dumbbell", "Treinos esta semana", "0", "Meta: 5")
+        self._stat_treinos   = _StatCard("fa5s.dumbbell", "Treinos esta semana", "0", "dias")
         self._stat_calorias  = _StatCard("fa5s.fire", "Calorias queimadas", "0", "kcal")
-        self._stat_volume    = _StatCard("fa5s.weight", "Volume total", "0k", "kg levantados")
-        self._stat_sequencia = _StatCard("fa5s.chart-line", "Streak", "0", "dias seguidos")
+        self._stat_volume    = _StatCard("fa5s.weight", "Volume total", "0", "kg")
+        self._stat_sequencia = _StatCard("fa5s.chart-line", "Streak", "0", "dias")
         
         for s in [self._stat_treinos, self._stat_calorias, self._stat_volume, self._stat_sequencia]:
             stats_row.addWidget(s)
@@ -305,7 +316,11 @@ class DashboardTab(QWidget):
 
         row2 = self._db.fetchone("SELECT COALESCE(SUM(weight_kg*reps),0) AS v FROM workout_logs")
         vol = float(row2["v"]) if row2 else 0.0
-        self._stat_volume.set_value(f"{vol/1000:.1f}k" if vol >= 1000 else f"{vol:.0f}")
+        # Exibe em milhares (k) se >= 1000, senão valor normal
+        if vol >= 1000:
+            self._stat_volume.set_value(f"{vol/1000:.1f}k")
+        else:
+            self._stat_volume.set_value(f"{vol:.0f}")
 
         # Calcula calorias usando a fórmula MET correta
         # Busca todas as sessões da semana e soma as calorias
@@ -440,6 +455,6 @@ class DashboardTab(QWidget):
                 self._rec_lay.addWidget(sep)
         else:
             empty = QLabel("Nenhum treino registrado ainda.")
-            empty.setStyleSheet("color:#6b7280; font-size:13px; padding:20px 0; background:transparent; border:none;")
+            empty.setStyleSheet("color:#6b7280; font-size:13px; font-weight:500; font-family:sans-serif; padding:20px 0; background:transparent; border:none;")
             empty.setAlignment(Qt.AlignCenter)
             self._rec_lay.addWidget(empty)
