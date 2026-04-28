@@ -48,7 +48,7 @@ class FramelessDialog(QDialog):
         # Área de conteúdo
         self._content_w = QWidget()
         self._content_w.setStyleSheet(
-            "background: #242424;"
+            "background: #0f0f0f;"
             f"border-bottom-left-radius: {RADIUS_LG}px;"
             f"border-bottom-right-radius: {RADIUS_LG}px;"
         )
@@ -169,48 +169,117 @@ class CreateWorkoutDialog(FramelessDialog):
         super().__init__("CRIAR TREINO", parent)
         self._norm = norm
         self._ex_widgets: list[dict] = []
+        self._day_buttons: list[QPushButton] = []
         self.setMinimumWidth(500)
         self.setMaximumHeight(700)
+        
+        # Force background color
+        self.setStyleSheet("background-color: #0f0f0f;")
         self._build()
 
     def _build(self):
         lay = self.content_layout()
 
-        lay.addWidget(label("CRIAR TREINO", "h2"))
+        # Título com espaçamento generoso
+        title_label = label("CRIAR TREINO", "h2")
+        lay.addWidget(title_label)
+        lay.addSpacing(20)
         lay.addWidget(label("Monte seu treino personalizado com exercícios, séries e repetições.", "sub"))
         lay.addWidget(separator())
+        lay.addSpacing(24)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setStyleSheet("QScrollArea { background: #0f0f0f; border: none; }")
         form_w = QWidget()
+        form_w.setStyleSheet("background: #0f0f0f;")
         self._form_lay = QVBoxLayout(form_w)
-        self._form_lay.setSpacing(14)
+        self._form_lay.setSpacing(24)
         scroll.setWidget(form_w)
         lay.addWidget(scroll)
 
-        # Nome
+        # ===== NOME DO TREINO - FLOATING INPUT =====
         self._form_lay.addWidget(label("Nome do treino", "h3"))
         self._name = QLineEdit()
         self._name.setPlaceholderText("Ex: Treino D — Ombro")
+        self._name.setStyleSheet("""
+            QLineEdit {
+                background: transparent;
+                border: none;
+                border-bottom: 2px solid #333333;
+                color: white;
+                padding: 10px;
+                font-size: 16px;
+            }
+            QLineEdit:focus {
+                border-bottom: 2px solid #39FF14;
+            }
+        """)
         self._form_lay.addWidget(self._name)
+        self._form_lay.addSpacing(20)
 
-        # Dia + Músculos
-        row = QHBoxLayout()
-        for attr, lbl_txt, ph in [
-            ("_days",    "Dia(s)",    "Ex: Segunda"),
-            ("_muscles", "Músculos",  "Ex: Ombro & Trapézio"),
-        ]:
-            col = QVBoxLayout()
-            col.addWidget(label(lbl_txt, "h3"))
-            edit = QLineEdit()
-            edit.setPlaceholderText(ph)
-            setattr(self, attr, edit)
-            col.addWidget(edit)
-            row.addLayout(col)
-        self._form_lay.addLayout(row)
+        # ===== MÚSCULOS - FLOATING INPUT =====
+        self._form_lay.addWidget(label("Músculos", "h3"))
+        self._muscles = QLineEdit()
+        self._muscles.setPlaceholderText("Ex: Ombro & Trapézio")
+        self._muscles.setStyleSheet("""
+            QLineEdit {
+                background: transparent;
+                border: none;
+                border-bottom: 2px solid #333333;
+                color: white;
+                padding: 10px;
+                font-size: 16px;
+            }
+            QLineEdit:focus {
+                border-bottom: 2px solid #39FF14;
+            }
+        """)
+        self._form_lay.addWidget(self._muscles)
+        self._form_lay.addSpacing(20)
 
-        # Exercícios
+        # ===== SELEÇÃO DE DIAS - BOTÕES CIRCULARES =====
+        self._form_lay.addWidget(label("Dia(s) da Semana", "h3"))
+        days_layout = QHBoxLayout()
+        days_layout.setSpacing(12)
+        
+        day_labels = ["S", "T", "Q", "Q", "S", "S", "D"]
+        day_names = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
+        
+        for day_label, day_name in zip(day_labels, day_names):
+            day_btn = QPushButton(day_label)
+            day_btn.setCheckable(True)
+            day_btn.setProperty("day_name", day_name)
+            day_btn.setFixedSize(40, 40)
+            day_btn.setStyleSheet("""
+                QPushButton {
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 20px;
+                    border: 1px solid #333333;
+                    color: #888888;
+                    background: transparent;
+                    font-size: 14px;
+                    font-weight: bold;
+                }
+                QPushButton:hover {
+                    border: 1px solid #555555;
+                }
+                QPushButton:checked {
+                    background: #000000;
+                    border: 2px solid #39FF14;
+                    color: #39FF14;
+                }
+            """)
+            self._day_buttons.append(day_btn)
+            days_layout.addWidget(day_btn)
+        
+        days_layout.addStretch()
+        self._form_lay.addLayout(days_layout)
+        self._form_lay.addSpacing(20)
+
+        # ===== EXERCÍCIOS =====
         self._form_lay.addWidget(label("Exercícios", "h3"))
         self._ex_container = QVBoxLayout()
         self._ex_container.setSpacing(10)
@@ -225,7 +294,7 @@ class CreateWorkoutDialog(FramelessDialog):
 
         save = QPushButton(" Salvar Treino")
         save.setIcon(qta.icon("fa5s.save", color="#000000"))
-        save.setMinimumHeight(44)
+        save.setMinimumHeight(56)
         save.clicked.connect(self.accept)
         lay.addWidget(save)
 
@@ -269,9 +338,14 @@ class CreateWorkoutDialog(FramelessDialog):
                     "reps": w["reps"].text(),
                     "rest": w["rest"].text(),
                 })
+        
+        # Coleta os dias selecionados dos botões circulares
+        selected_days = [btn.property("day_name") for btn in self._day_buttons if btn.isChecked()]
+        days_str = ", ".join(selected_days) if selected_days else ""
+        
         return {
             "name": self._name.text().strip(),
-            "days": self._days.text().strip(),
+            "days": days_str,
             "muscles": self._muscles.text().strip(),
             "exercises": exercises,
         }

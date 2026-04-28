@@ -392,9 +392,9 @@ class WorkoutsTab(QWidget):
         page.setStyleSheet("background-color: #0f0f0f;")
         outer = QVBoxLayout(page)
         outer.setContentsMargins(40, 20, 40, 32)
-        outer.setSpacing(20)
+        outer.setSpacing(0)
 
-        # Cabeçalho com botão fechar (X)
+        # Cabeçalho com botão fechar (X) - fixo no topo
         hdr = QHBoxLayout()
         hdr.addStretch()
         close_btn = QPushButton("✕")
@@ -413,16 +413,7 @@ class WorkoutsTab(QWidget):
         hdr.addWidget(close_btn)
         outer.addLayout(hdr)
 
-        # Título
-        title = QLabel("CRIAR TREINO")
-        title.setStyleSheet("font-size: 28px; font-weight: bold; color: #fff; background: transparent;")
-        outer.addWidget(title)
-
-        # Subtítulo
-        subtitle = QLabel("Monte seu treino personalizado com exercícios, séries e repetições.")
-        subtitle.setStyleSheet("font-size: 14px; color: #AAAAAA; font-weight: normal; margin-bottom: 8px; background: transparent;")
-        outer.addWidget(subtitle)
-
+        # Área de rolagem contendo todo o conteúdo
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
@@ -431,11 +422,23 @@ class WorkoutsTab(QWidget):
         form_w.setStyleSheet("background: transparent;")
         self._form_lay = QVBoxLayout(form_w)
         self._form_lay.setSpacing(20)
-        self._form_lay.setContentsMargins(0, 0, 0, 0)
+        self._form_lay.setContentsMargins(0, 30, 0, 0)  # Padding-top generoso
         scroll.setWidget(form_w)
         outer.addWidget(scroll)
 
-        # Nome do treino
+        # ===== TÍTULO E SUBTÍTULO (dentro da área de rolagem) =====
+        title = QLabel("CRIAR TREINO")
+        title.setStyleSheet("font-size: 22px; font-weight: bold; color: #fff; background: transparent;")
+        self._form_lay.addWidget(title)
+
+        subtitle = QLabel("Monte seu treino personalizado com exercícios, séries e repetições.")
+        subtitle.setStyleSheet("font-size: 13px; color: #AAAAAA; font-weight: normal; background: transparent;")
+        self._form_lay.addWidget(subtitle)
+
+        # Espaçamento após o subtítulo
+        self._form_lay.addSpacing(24)
+
+        # ===== NOME DO TREINO - FLOATING INPUT =====
         name_lbl = QLabel("Nome do treino")
         name_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #fff; margin-top: 4px; margin-bottom: 6px; background: transparent;")
         self._form_lay.addWidget(name_lbl)
@@ -445,51 +448,59 @@ class WorkoutsTab(QWidget):
         self._name.setFixedHeight(48)
         self._name.setStyleSheet("""
             QLineEdit {
-                background-color: #1a1a1a;
-                border: 1px solid #333333;
-                border-radius: 6px;
-                padding: 10px;
+                border: none;
+                border-bottom: 2px solid #333333;
+                background: transparent;
                 color: white;
+                padding: 10px;
                 font-size: 14px;
             }
             QLineEdit:focus { 
-                border: 1px solid #39FF14;
+                border-bottom: 2px solid #a2ff00;
             }
         """)
         self._form_lay.addWidget(self._name)
 
-        # Dia + Músculos
-        row = QHBoxLayout()
-        row.setSpacing(20)
-        for attr, lbl_txt, ph in [
-            ("_days",    "Dia(s)",    "Ex: Segunda"),
-            ("_muscles", "Músculos",  "Ex: Ombro & Trapézio"),
-        ]:
-            col = QVBoxLayout()
-            col.setSpacing(6)
-            lbl = QLabel(lbl_txt)
-            lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #fff; margin-bottom: 6px; background: transparent;")
-            col.addWidget(lbl)
-            edit = QLineEdit()
-            edit.setPlaceholderText(ph)
-            edit.setFixedHeight(48)
-            edit.setStyleSheet("""
-                QLineEdit {
-                    background-color: #1a1a1a;
-                    border: 1px solid #333333;
-                    border-radius: 6px;
-                    padding: 10px;
-                    color: white;
+        # ===== SELETOR DE DIAS (7 BOTÕES CIRCULARES) =====
+        days_lbl = QLabel("Dias da semana")
+        days_lbl.setStyleSheet("font-size: 14px; font-weight: bold; color: #fff; margin-top: 12px; margin-bottom: 6px; background: transparent;")
+        self._form_lay.addWidget(days_lbl)
+        
+        days_row = QHBoxLayout()
+        days_row.setSpacing(12)
+        self._day_buttons = []
+        day_labels = ["S", "T", "Q", "Q", "S", "S", "D"]
+        
+        for day_label in day_labels:
+            btn = QPushButton(day_label)
+            btn.setCheckable(True)
+            btn.setFixedSize(40, 40)
+            btn.setStyleSheet("""
+                QPushButton {
+                    background: transparent;
+                    color: #888;
+                    border: 2px solid #333333;
+                    border-radius: 20px;
                     font-size: 14px;
+                    font-weight: bold;
                 }
-                QLineEdit:focus { 
-                    border: 1px solid #39FF14;
+                QPushButton:hover {
+                    border-color: #555;
+                    color: #aaa;
+                }
+                QPushButton:checked {
+                    border-color: #a2ff00;
+                    color: #a2ff00;
                 }
             """)
-            setattr(self, attr, edit)
-            col.addWidget(edit)
-            row.addLayout(col)
-        self._form_lay.addLayout(row)
+            self._day_buttons.append(btn)
+            days_row.addWidget(btn)
+        
+        days_row.addStretch()
+        self._form_lay.addLayout(days_row)
+
+        # Espaçamento para o layout "respirar"
+        self._form_lay.addSpacing(30)
 
         # Exercícios
         ex_lbl = QLabel("Exercícios")
@@ -502,49 +513,62 @@ class WorkoutsTab(QWidget):
         self._form_lay.addLayout(self._ex_container)
         self._add_exercise_block()
 
-        # Botão adicionar exercício
+        # Botão adicionar exercício (estilo premium integrado)
         add_ex = QPushButton("＋  Adicionar exercício")
         add_ex.setObjectName("btn_adicionar")
-        add_ex.setFixedHeight(40)
+        add_ex.setFixedHeight(44)
         add_ex.setStyleSheet("""
             QPushButton#btn_adicionar {
-                background: transparent;
-                color: #39FF14;
-                border: 1px dashed #39FF14;
+                background-color: #151515;
+                color: #a2ff00;
+                border: 1px solid #222222;
                 border-radius: 8px;
-                font-size: 14px;
-                font-weight: normal;
+                font-size: 13px;
+                font-weight: 600;
             }
             QPushButton#btn_adicionar:hover { 
-                background: rgba(57, 255, 20, 0.1);
+                color: #b5ff00;
+                border-color: #a2ff00;
+                background-color: rgba(162, 255, 0, 0.08);
             }
         """)
         add_ex.clicked.connect(self._add_exercise_block)
         self._form_lay.addWidget(add_ex)
 
-        # Botão Salvar Treino
-        save = QPushButton("Salvar Treino")
+        # Espaçamento antes do botão salvar
+        self._form_lay.addSpacing(30)
+
+        # Botão Salvar Treino (dentro do scroll, último elemento)
+        save = QPushButton("✓  SALVAR TREINO")
         save.setObjectName("btn_salvar_treino")
-        save.setMinimumHeight(50)
+        save.setMinimumHeight(70)
         save.setStyleSheet("""
             QPushButton#btn_salvar_treino {
-                background: #39FF14;
-                color: black;
+                background-color: #a2ff00;
+                color: #000000;
                 border: none;
-                border-radius: 10px;
+                border-radius: 12px;
                 font-size: 16px;
                 font-weight: bold;
+                margin-top: 30px;
             }
-            QPushButton#btn_salvar_treino:hover { background: #4aff25; }
-            QPushButton#btn_salvar_treino:pressed { background: #28dd03; }
+            QPushButton#btn_salvar_treino:hover { 
+                background-color: #b5ff00;
+            }
+            QPushButton#btn_salvar_treino:pressed { 
+                background-color: #8ad900;
+            }
         """)
         save.clicked.connect(self._save_workout)
-        outer.addWidget(save)
+        self._form_lay.addWidget(save)
+
+        # Espaçamento final para garantir visibilidade total
+        self._form_lay.addSpacing(20)
 
         return page
 
     def _add_exercise_block(self):
-        idx = len(self._ex_widgets) + 1
+        """Cria um novo card de exercício com séries dinâmicas."""
         block = QFrame()
         block.setObjectName("componente_exercicio")
         block.setStyleSheet("""
@@ -556,116 +580,169 @@ class WorkoutsTab(QWidget):
         """)
         b_lay = QVBoxLayout(block)
         b_lay.setContentsMargins(20, 20, 20, 20)
-        b_lay.setSpacing(14)
+        b_lay.setSpacing(16)
 
-        # Campo nome do exercício (em cima, linha separada)
+        # ===== NOME DO EXERCÍCIO - FLOATING INPUT =====
         name_edit = ExerciseLineEdit(self._norm, block)
         name_edit.setPlaceholderText("Nome do exercício")
         name_edit.setFixedHeight(48)
         name_edit.setStyleSheet("""
             QLineEdit {
-                background-color: #1a1a1a;
-                border: 1px solid #333333;
-                border-radius: 6px;
-                padding: 10px;
+                border: none;
+                border-bottom: 2px solid #333333;
+                background: transparent;
                 color: white;
-                font-size: 14px;
+                padding: 10px;
+                font-size: 15px;
+                font-weight: bold;
             }
             QLineEdit:focus { 
-                border: 1px solid #39FF14;
+                border-bottom: 2px solid #a2ff00;
             }
         """)
         b_lay.addWidget(name_edit)
 
-        # Séries, Reps, Descanso (agrupados em QHBoxLayout)
-        row = QHBoxLayout()
-        row.setSpacing(14)
+        # ===== CABEÇALHO DAS COLUNAS =====
+        header_row = QHBoxLayout()
+        header_row.setSpacing(12)
+        header_row.setContentsMargins(0, 8, 0, 4)
         
-        # Séries
-        series_col = QVBoxLayout()
-        series_col.setSpacing(6)
-        series_lbl = QLabel("Séries")
-        series_lbl.setStyleSheet("font-size: 12px; color: #AAAAAA; font-weight: bold; margin-bottom: 4px; background: transparent;")
-        series_col.addWidget(series_lbl)
-        series = QSpinBox()
-        series.setRange(1, 20)
-        series.setValue(3)
-        series.setFixedHeight(44)
-        series.setStyleSheet("""
-            QSpinBox {
-                background-color: #1a1a1a;
-                border: 1px solid #333333;
-                border-radius: 6px;
-                padding: 10px;
-                color: white;
-                font-size: 14px;
-            }
-            QSpinBox:focus { 
-                border: 1px solid #39FF14;
-            }
-            QSpinBox::up-button, QSpinBox::down-button { width: 0px; }
-        """)
-        series_col.addWidget(series)
-        row.addLayout(series_col)
+        serie_hdr = QLabel("Série")
+        serie_hdr.setFixedWidth(50)
+        serie_hdr.setStyleSheet("font-size: 11px; color: #666; font-weight: bold; background: transparent;")
+        header_row.addWidget(serie_hdr)
         
-        # Reps
-        reps_col = QVBoxLayout()
-        reps_col.setSpacing(6)
-        reps_lbl = QLabel("Reps")
-        reps_lbl.setStyleSheet("font-size: 12px; color: #AAAAAA; font-weight: bold; margin-bottom: 4px; background: transparent;")
-        reps_col.addWidget(reps_lbl)
-        reps = QLineEdit("10-12")
-        reps.setFixedHeight(44)
-        reps.setStyleSheet("""
-            QLineEdit {
-                background-color: #1a1a1a;
-                border: 1px solid #333333;
-                border-radius: 6px;
-                padding: 10px;
-                color: white;
-                font-size: 14px;
-            }
-            QLineEdit:focus { 
-                border: 1px solid #39FF14;
-            }
-        """)
-        reps_col.addWidget(reps)
-        row.addLayout(reps_col)
+        peso_hdr = QLabel("Peso (kg)")
+        peso_hdr.setStyleSheet("font-size: 11px; color: #666; font-weight: bold; background: transparent;")
+        header_row.addWidget(peso_hdr, 1)
         
-        # Descanso
-        rest_col = QVBoxLayout()
-        rest_col.setSpacing(6)
-        rest_lbl = QLabel("Descanso")
-        rest_lbl.setStyleSheet("font-size: 12px; color: #AAAAAA; font-weight: bold; margin-bottom: 4px; background: transparent;")
-        rest_col.addWidget(rest_lbl)
-        rest = QLineEdit("60s")
-        rest.setFixedHeight(44)
-        rest.setStyleSheet("""
-            QLineEdit {
-                background-color: #1a1a1a;
-                border: 1px solid #333333;
+        reps_hdr = QLabel("Reps")
+        reps_hdr.setStyleSheet("font-size: 11px; color: #666; font-weight: bold; background: transparent;")
+        header_row.addWidget(reps_hdr, 1)
+        
+        b_lay.addLayout(header_row)
+
+        # ===== CONTAINER DE SÉRIES =====
+        series_container = QVBoxLayout()
+        series_container.setSpacing(8)
+        series_container.setContentsMargins(0, 0, 0, 0)
+        
+        # Lista para armazenar as linhas de série
+        series_rows = []
+        
+        # Adiciona 3 séries iniciais
+        for i in range(3):
+            series_rows.append(self._create_series_row(i + 1, series_container))
+        
+        b_lay.addLayout(series_container)
+
+        # ===== BOTÃO ADICIONAR SÉRIE =====
+        add_series_btn = QPushButton("+ Adicionar série")
+        add_series_btn.setFixedHeight(32)
+        add_series_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #151515;
+                color: #a2ff00;
+                border: 1px solid #222222;
                 border-radius: 6px;
-                padding: 10px;
-                color: white;
-                font-size: 14px;
+                font-size: 12px;
+                font-weight: 600;
             }
-            QLineEdit:focus { 
-                border: 1px solid #39FF14;
+            QPushButton:hover { 
+                color: #b5ff00;
+                border-color: #a2ff00;
+                background-color: rgba(162, 255, 0, 0.08);
             }
         """)
-        rest_col.addWidget(rest)
-        row.addLayout(rest_col)
         
-        b_lay.addLayout(row)
+        # Conecta o botão para adicionar nova série
+        def add_new_series():
+            new_row = self._create_series_row(len(series_rows) + 1, series_container)
+            series_rows.append(new_row)
+        
+        add_series_btn.clicked.connect(add_new_series)
+        b_lay.addWidget(add_series_btn)
 
         self._ex_container.addWidget(block)
-        self._ex_widgets.append({"name": name_edit, "series": series, "reps": reps, "rest": rest})
+        self._ex_widgets.append({
+            "name": name_edit,
+            "series_rows": series_rows,
+            "series_container": series_container
+        })
+
+    def _create_series_row(self, series_num: int, parent_layout: QVBoxLayout) -> dict:
+        """Cria uma linha individual de série com número, peso e reps."""
+        row = QHBoxLayout()
+        row.setSpacing(12)
+        row.setContentsMargins(0, 0, 0, 0)
+        
+        # Número da série (destaque verde neon)
+        num_lbl = QLabel(str(series_num))
+        num_lbl.setFixedWidth(50)
+        num_lbl.setAlignment(Qt.AlignCenter)
+        num_lbl.setStyleSheet("""
+            font-size: 16px;
+            color: #a2ff00;
+            font-weight: bold;
+            background: transparent;
+        """)
+        row.addWidget(num_lbl)
+        
+        # Input de Peso (estilo neon consistente)
+        peso_input = QLineEdit()
+        peso_input.setPlaceholderText("0")
+        peso_input.setFixedHeight(36)
+        peso_input.setStyleSheet("""
+            QLineEdit {
+                border: none;
+                border-bottom: 2px solid #333333;
+                background: transparent;
+                color: #ccc;
+                padding: 6px;
+                font-size: 13px;
+            }
+            QLineEdit:focus { 
+                border-bottom: 2px solid #a2ff00;
+                color: white;
+            }
+        """)
+        row.addWidget(peso_input, 1)
+        
+        # Input de Reps (estilo neon consistente)
+        reps_input = QLineEdit()
+        reps_input.setPlaceholderText("10-12")
+        reps_input.setFixedHeight(36)
+        reps_input.setStyleSheet("""
+            QLineEdit {
+                border: none;
+                border-bottom: 2px solid #333333;
+                background: transparent;
+                color: #ccc;
+                padding: 6px;
+                font-size: 13px;
+            }
+            QLineEdit:focus { 
+                border-bottom: 2px solid #a2ff00;
+                color: white;
+            }
+        """)
+        row.addWidget(reps_input, 1)
+        
+        parent_layout.addLayout(row)
+        
+        return {
+            "num_label": num_lbl,
+            "peso": peso_input,
+            "reps": reps_input,
+            "layout": row
+        }
 
     def _show_create_form(self):
         # Limpa o formulário antes de exibir
         self._name.clear()
-        self._days.clear()
-        self._muscles.clear()
+        # Desmarca todos os botões de dias
+        for btn in self._day_buttons:
+            btn.setChecked(False)
         # Remove blocos de exercício existentes
         while self._ex_container.count():
             item = self._ex_container.takeAt(0)
@@ -676,24 +753,90 @@ class WorkoutsTab(QWidget):
         self._stack.setCurrentIndex(1)
 
     def _save_workout(self):
+        """Salva o treino com estrutura granular de exercícios e séries."""
+        
+        # ===== 1. COLETA DE DADOS DOS EXERCÍCIOS =====
         exercises = []
-        for w in self._ex_widgets:
-            n = w["name"].text().strip()
-            if n:
+        for idx, w in enumerate(self._ex_widgets):
+            exercise_name = w["name"].text().strip()
+            
+            if not exercise_name:
+                continue  # Pula exercícios sem nome
+            
+            # Coleta dados de cada série individual
+            series_data = []
+            for series_idx, series_row in enumerate(w["series_rows"]):
+                peso = series_row["peso"].text().strip()
+                reps = series_row["reps"].text().strip()
+                
+                # Só adiciona séries que tenham pelo menos peso OU reps preenchidos
+                if peso or reps:
+                    series_data.append({
+                        "serie_num": series_idx + 1,
+                        "peso": peso if peso else "0",
+                        "reps": reps if reps else "10-12"
+                    })
+            
+            # Só adiciona o exercício se tiver pelo menos uma série com dados
+            if series_data:
                 exercises.append({
-                    "name": n,
-                    "series": w["series"].value(),
-                    "reps": w["reps"].text(),
-                    "rest": w["rest"].text(),
+                    "name": exercise_name,
+                    "series_count": len(series_data),
+                    "series_data": series_data,
+                    "reps": series_data[0]["reps"],  # Usa a primeira série como padrão
+                    "rest": "60s"  # Valor padrão de descanso
                 })
-        name = self._name.text().strip()
-        if not name or not exercises:
-            QMessageBox.warning(self, "Atenção", "Informe nome e ao menos um exercício.")
+        
+        # ===== 2. VALIDAÇÃO =====
+        workout_name = self._name.text().strip()
+        
+        if not workout_name:
+            QMessageBox.warning(
+                self, 
+                "Atenção", 
+                "Por favor, informe o nome do treino."
+            )
             return
-        ex_ids = [self._norm.get_or_create(e["name"]).id for e in exercises]
-        self._rm.create_routine(name, ex_ids)
-        self._stack.setCurrentIndex(0)
-        self.reload()
+        
+        if not exercises:
+            QMessageBox.warning(
+                self, 
+                "Atenção", 
+                "Adicione pelo menos um exercício com séries preenchidas."
+            )
+            return
+        
+        # ===== 3. COLETA DOS DIAS SELECIONADOS =====
+        day_labels = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
+        selected_days = [day_labels[i] for i, btn in enumerate(self._day_buttons) if btn.isChecked()]
+        days_str = ", ".join(selected_days) if selected_days else "Não especificado"
+        
+        # ===== 4. SALVAMENTO NO BANCO =====
+        try:
+            ex_ids = [self._norm.get_or_create(e["name"]).id for e in exercises]
+            self._rm.create_routine(workout_name, ex_ids)
+            
+            # Feedback de sucesso
+            total_series = sum(e["series_count"] for e in exercises)
+            QMessageBox.information(
+                self,
+                "Treino Criado!",
+                f"✓ {workout_name}\n\n"
+                f"📋 {len(exercises)} exercício(s)\n"
+                f"🔢 {total_series} série(s) total\n"
+                f"📅 {days_str}"
+            )
+            
+            # Volta para a lista e recarrega
+            self._stack.setCurrentIndex(0)
+            self.reload()
+            
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "Erro ao Salvar",
+                f"Ocorreu um erro ao salvar o treino:\n{str(e)}"
+            )
 
 
 
