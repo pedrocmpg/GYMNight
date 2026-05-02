@@ -83,43 +83,29 @@ class ActiveWorkoutScreen(QWidget):
         self._title = label("TREINO", "h1")
         lay.addWidget(self._title)
 
-        # Indicador de séries do exercício atual
-        self._set_indicator = SetIndicatorWidget(sets_total=4, sets_done=0)
-        lay.addWidget(self._set_indicator)
-
-        # Carregar Rotina
-        load_row = QHBoxLayout()
-        load_row.setSpacing(8)
-        self._routine_combo = QComboBox()
-        self._routine_combo.setMinimumWidth(260)
-        self._routine_combo.setPlaceholderText("Selecionar rotina...")
-        load_row.addWidget(self._routine_combo)
-        load_btn = QPushButton("Carregar")
-        load_btn.setFixedHeight(34)
-        load_btn.clicked.connect(self._load_from_combo)
-        load_row.addWidget(load_btn)
-        
         # Botão para adicionar exercício avulso
-        add_ex_btn = QPushButton(" Exercício")
+        add_ex_row = QHBoxLayout()
+        add_ex_row.setSpacing(8)
+        
+        add_ex_btn = QPushButton(" Adicionar Exercício")
         add_ex_btn.setIcon(qta.icon("fa5s.plus", color=C_GREEN))
-        add_ex_btn.setFixedHeight(34)
+        add_ex_btn.setFixedHeight(40)
         add_ex_btn.setStyleSheet(f"""
             QPushButton {{
                 background: transparent;
                 color: {C_GREEN};
                 border: 1px solid {C_GREEN};
                 border-radius: {RADIUS_MD}px;
-                padding: 0 14px;
+                padding: 0 16px;
                 font-weight: 700;
-                font-size: 12px;
+                font-size: 13px;
             }}
             QPushButton:hover {{ background: rgba(162, 255, 0, 0.12); }}
         """)
         add_ex_btn.clicked.connect(self._add_exercise_dialog)
-        load_row.addWidget(add_ex_btn)
-        
-        load_row.addStretch()
-        lay.addLayout(load_row)
+        add_ex_row.addWidget(add_ex_btn)
+        add_ex_row.addStretch()
+        lay.addLayout(add_ex_row)
 
         # Barra de progresso
         self._prog_bar = QFrame()
@@ -131,60 +117,10 @@ class ActiveWorkoutScreen(QWidget):
         self._prog_fill.setFixedWidth(0)
         lay.addWidget(self._prog_bar)
 
-        # Tabs de exercícios (scroll horizontal)
-        self._tabs_scroll = QScrollArea()
-        self._tabs_scroll.setFixedHeight(48)
-        self._tabs_scroll.setWidgetResizable(True)
-        self._tabs_scroll.setFrameShape(QFrame.NoFrame)
-        self._tabs_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self._tabs_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self._tabs_w = QWidget()
-        self._tabs_lay = QHBoxLayout(self._tabs_w)
-        self._tabs_lay.setContentsMargins(0, 0, 0, 0)
-        self._tabs_lay.setSpacing(8)
-        self._tabs_lay.addStretch()
-        self._tabs_scroll.setWidget(self._tabs_w)
-        lay.addWidget(self._tabs_scroll)
-
-        # Card do exercício atual
-        self._ex_card = QFrame()
-        self._ex_card.setObjectName("card")
-        neon_glow(self._ex_card, C_GREEN, blur=81, opacity=405)
-        ex_lay = QVBoxLayout(self._ex_card)
-        ex_lay.setContentsMargins(20, 20, 20, 20)
-        ex_lay.setSpacing(14)
-
-        card_hdr = QHBoxLayout()
-        self._ex_icon = QLabel("◈")
-        self._ex_icon.setFixedSize(44, 44)
-        self._ex_icon.setAlignment(Qt.AlignCenter)
-        self._ex_icon.setStyleSheet(f"background:{C_GREEN_BG}; border-radius:{RADIUS_MD}px; font-size:20px;")
-        card_hdr.addWidget(self._ex_icon)
-        card_hdr.addSpacing(12)
-
-        card_info = QVBoxLayout()
-        card_info.setSpacing(2)
-        self._ex_name_lbl = label("", "h2")
-        self._ex_meta_lbl = label("", "sub")
-        card_info.addWidget(self._ex_name_lbl)
-        card_info.addWidget(self._ex_meta_lbl)
-        card_hdr.addLayout(card_info)
-        card_hdr.addStretch()
-        self._ex_prog_lbl = QLabel("0/4")
-        self._ex_prog_lbl.setStyleSheet(f"color:{C_GREEN}; font-size:18px; font-weight:800; font-family:'Arial';")
-        card_hdr.addWidget(self._ex_prog_lbl)
-        ex_lay.addLayout(card_hdr)
-
-        # Cabeçalho séries
-        s_hdr = QHBoxLayout()
-        for txt, stretch in [("Série", 1), ("Peso (kg)", 3), ("Reps", 3), ("Tipo", 2), ("", 1)]:
-            s_hdr.addWidget(label(txt, "sub"), stretch)
-        ex_lay.addLayout(s_hdr)
-
-        self._series_container = QVBoxLayout()
-        self._series_container.setSpacing(8)
-        ex_lay.addLayout(self._series_container)
-        lay.addWidget(self._ex_card)
+        # Container para todos os cards de exercícios
+        self._exercises_container = QVBoxLayout()
+        self._exercises_container.setSpacing(32)
+        lay.addLayout(self._exercises_container)
 
         # ── Seção de Cardio ──────────────────────────────────────────────
         cardio_hdr = QHBoxLayout()
@@ -222,27 +158,30 @@ class ActiveWorkoutScreen(QWidget):
         scroll.setWidget(content)
         workout_root.addWidget(scroll)
 
-        # Navegação (fora do scroll, fixo no rodapé)
+        # Botão de finalizar (fora do scroll, fixo no rodapé)
         nav_w = QWidget()
         nav_w.setStyleSheet(f"background:{C_CARD}; border-top:1px solid {C_BORDER};")
         nav = QHBoxLayout(nav_w)
         nav.setContentsMargins(24, 10, 24, 10)
         nav.setSpacing(12)
 
-        self._prev_btn = QPushButton(" Anterior")
-        self._prev_btn.setIcon(qta.icon("fa5s.arrow-left", color=C_TEXT3))
-        self._prev_btn.setObjectName("ghost")
-        self._prev_btn.setMinimumHeight(44)
-        self._prev_btn.clicked.connect(self._prev)
+        self._finish_btn = QPushButton(" Finalizar Treino")
+        self._finish_btn.setIcon(qta.icon("fa5s.flag-checkered", color="#000000"))
+        self._finish_btn.setMinimumHeight(48)
+        self._finish_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {C_GREEN};
+                color: #000;
+                border: none;
+                border-radius: {RADIUS_MD}px;
+                font-size: 15px;
+                font-weight: 700;
+            }}
+            QPushButton:hover {{ background: #bef264; }}
+        """)
+        self._finish_btn.clicked.connect(self._finish)
 
-        self._next_btn = QPushButton("Próximo ")
-        self._next_btn.setIcon(qta.icon("fa5s.arrow-right", color="#ffffff"))
-        self._next_btn.setLayoutDirection(Qt.RightToLeft)
-        self._next_btn.setMinimumHeight(44)
-        self._next_btn.clicked.connect(self._next)
-
-        nav.addWidget(self._prev_btn, 1)
-        nav.addWidget(self._next_btn, 2)
+        nav.addWidget(self._finish_btn)
         workout_root.addWidget(nav_w)
 
         self._main_stack.addWidget(workout_page)  # index 0
@@ -376,11 +315,8 @@ class ActiveWorkoutScreen(QWidget):
             for _ in range(4)
         ])
         
-        # Reconstrói as tabs
-        self._build_tabs()
-        
-        # Mostra o novo exercício
-        self._show_exercise(len(self._exercises) - 1)
+        # Reconstrói todos os cards
+        self._build_all_exercises()
         
         QMessageBox.information(self, "Sucesso", f"Exercício '{exercise.canonical_name.title()}' adicionado!")
 
@@ -434,26 +370,6 @@ class ActiveWorkoutScreen(QWidget):
     # Carregamento de rotina
     # ------------------------------------------------------------------
 
-    def _populate_routine_combo(self):
-        self._routine_combo.clear()
-        for r in self._rm.list_routines():
-            self._routine_combo.addItem(r.name, userData=r)
-
-    def _load_from_combo(self):
-        routine = self._routine_combo.currentData()
-        if routine is None:
-            return
-        exercises_with_sets = self._rm.get_routine_exercises(routine.id)
-        self._exercises = [ex for ex, _ in exercises_with_sets]
-        self._current_idx = 0
-        self._series_data = [
-            [{"weight": "", "reps": "", "set_type": "N", "done": False} for _ in range(num_sets)]
-            for _, num_sets in exercises_with_sets
-        ]
-        self._title.setText(routine.name.upper())
-        self._build_tabs()
-        self._show_exercise(0)
-
     def load_routine(self, routine: Routine, session_id: int):
         self._session_id  = session_id
         exercises_with_sets = self._rm.get_routine_exercises(routine.id)
@@ -473,144 +389,132 @@ class ActiveWorkoutScreen(QWidget):
             [{"weight": "", "reps": "", "set_type": "N", "done": False, "saved": False} for _ in range(num_sets)]
             for _, num_sets in exercises_with_sets
         ]
-        self._populate_routine_combo()
-        for i in range(self._routine_combo.count()):
-            if self._routine_combo.itemData(i).id == routine.id:
-                self._routine_combo.setCurrentIndex(i)
-                break
-        self._build_tabs()
-        self._show_exercise(0)
+        self._build_all_exercises()
 
     # ------------------------------------------------------------------
-    # Tabs e exercícios
+    # Exercícios
     # ------------------------------------------------------------------
 
-    def _build_tabs(self):
-        while self._tabs_lay.count() > 1:
-            item = self._tabs_lay.takeAt(0)
+    def _build_all_exercises(self):
+        """Cria cards para todos os exercícios, um embaixo do outro."""
+        # Limpa container
+        while self._exercises_container.count():
+            item = self._exercises_container.takeAt(0)
             if item.widget():
                 item.widget().deleteLater()
 
-        for i, ex in enumerate(self._exercises):
-            short = ex.canonical_name.title()
-            if len(short) > 16:
-                short = short[:14] + "…"
-            btn = QPushButton(f"{i+1}. {short}")
-            btn.setCheckable(True)
-            btn.setFixedHeight(34)
-            btn.setStyleSheet(f"""
-                QPushButton {{
-                    background:{C_CARD}; color:{C_TEXT3};
-                    border:1px solid {C_BORDER}; border-radius:{RADIUS_LG}px;
-                    padding:0 14px; font-size:12px; font-weight:600;
-                }}
-                QPushButton:checked {{
-                    background:{C_GREEN}; color:#000; border-color:{C_GREEN};
-                }}
-            """)
-            btn.clicked.connect(lambda _, idx=i: self._show_exercise(idx))
-            self._tabs_lay.insertWidget(i, btn)
+        # Cria um card para cada exercício
+        for ex_idx, ex in enumerate(self._exercises):
+            card = self._create_exercise_card(ex_idx, ex)
+            self._exercises_container.addWidget(card)
 
-    def _show_exercise(self, idx: int):
-        if not self._exercises:
-            return
-        self._current_idx = idx
-        ex = self._exercises[idx]
+    def _create_exercise_card(self, ex_idx: int, ex: Exercise) -> QFrame:
+        """Cria um card completo para um exercício."""
+        card = QFrame()
+        card.setObjectName("card")
+        neon_glow(card, C_GREEN, blur=81, opacity=405)
+        card_lay = QVBoxLayout(card)
+        card_lay.setContentsMargins(24, 24, 24, 24)
+        card_lay.setSpacing(18)
 
-        for i in range(len(self._exercises)):
-            item = self._tabs_lay.itemAt(i)
-            if item and item.widget():
-                item.widget().setChecked(i == idx)
+        # Header do card
+        card_hdr = QHBoxLayout()
+        ex_icon = QLabel("◈")
+        ex_icon.setFixedSize(44, 44)
+        ex_icon.setAlignment(Qt.AlignCenter)
+        ex_icon.setStyleSheet(f"background:{C_GREEN_BG}; border-radius:{RADIUS_MD}px; font-size:20px;")
+        card_hdr.addWidget(ex_icon)
+        card_hdr.addSpacing(12)
 
-        self._ex_name_lbl.setText(ex.canonical_name.upper())
-        self._ex_meta_lbl.setText("4 séries × 8-12 reps — Descanso: 60s")
-
-        series = self._series_data[idx]
+        card_info = QVBoxLayout()
+        card_info.setSpacing(2)
+        ex_name_lbl = label(ex.canonical_name.upper(), "h2")
+        series = self._series_data[ex_idx]
+        ex_meta_lbl = label(f"{len(series)} séries × 8-12 reps — Descanso: 60s", "sub")
+        card_info.addWidget(ex_name_lbl)
+        card_info.addWidget(ex_meta_lbl)
+        card_hdr.addLayout(card_info)
+        card_hdr.addStretch()
+        
         done = sum(1 for s in series if s["done"])
-        self._ex_prog_lbl.setText(f"{done}/{len(series)}")
-        self._set_indicator.update_state(len(series), done)
+        ex_prog_lbl = QLabel(f"{done}/{len(series)}")
+        ex_prog_lbl.setStyleSheet(f"color:{C_GREEN}; font-size:18px; font-weight:800; font-family:'Arial';")
+        ex_prog_lbl.setObjectName(f"prog_{ex_idx}")  # Para atualizar depois
+        card_hdr.addWidget(ex_prog_lbl)
+        card_lay.addLayout(card_hdr)
 
-        while self._series_container.count():
-            item = self._series_container.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
+        # Cabeçalho das séries
+        s_hdr = QHBoxLayout()
+        for txt, stretch in [("Série", 1), ("Peso (kg)", 4), ("Reps", 4), ("", 1)]:
+            s_hdr.addWidget(label(txt, "sub"), stretch)
+        card_lay.addLayout(s_hdr)
 
+        # Séries
+        series_layout = QVBoxLayout()
+        series_layout.setSpacing(16)
+        
         for s_idx, s in enumerate(series):
             row_w = QWidget()
             row_w.setStyleSheet(f"""
                 QWidget {{ background: transparent; }}
                 QLineEdit {{
-                    background: {C_CARD2};
+                    background: transparent;
                     color: {C_TEXT};
-                    border: 1px solid {C_BORDER};
-                    border-radius: {RADIUS_MD}px;
-                    padding: 6px 10px;
-                    font-size: 13px;
+                    border: none;
+                    border-bottom: 1px solid {C_BORDER};
+                    border-radius: 0px;
+                    padding: 10px 8px;
+                    font-size: 15px;
                 }}
-                QLineEdit:focus {{ border-color: {C_GREEN}; }}
-                QComboBox {{
-                    background: {C_CARD2};
-                    color: {C_TEXT2};
-                    border: 1px solid {C_BORDER};
-                    border-radius: {RADIUS_MD}px;
-                    padding: 4px 8px;
-                    font-size: 11px;
-                    font-weight: 600;
+                QLineEdit:focus {{ 
+                    border-bottom: 2px solid {C_GREEN};
+                    background: transparent;
                 }}
             """)
             row_lay = QHBoxLayout(row_w)
             row_lay.setContentsMargins(0, 0, 0, 0)
-            row_lay.setSpacing(8)
+            row_lay.setSpacing(16)
 
-            num = label(str(s_idx + 1), "sub")
-            num.setFixedWidth(30)
-            row_lay.addWidget(num, 1)
+            # Número da série em verde neon
+            num = QLabel(str(s_idx + 1))
+            num.setFixedWidth(40)
+            num.setAlignment(Qt.AlignCenter)
+            num.setStyleSheet(f"""
+                color: {C_GREEN};
+                font-size: 20px;
+                font-weight: 900;
+                font-family: 'Arial';
+            """)
+            row_lay.addWidget(num, 0)
 
             w_edit = QLineEdit(s["weight"])
             w_edit.setPlaceholderText("0")
-            w_edit.setAlignment(Qt.AlignCenter)
-            w_edit.textChanged.connect(lambda v, i=idx, j=s_idx: self._update(i, j, "weight", v))
-            row_lay.addWidget(w_edit, 3)
+            w_edit.setAlignment(Qt.AlignLeft)
+            w_edit.setFixedHeight(44)
+            w_edit.textChanged.connect(lambda v, i=ex_idx, j=s_idx: self._update(i, j, "weight", v))
+            row_lay.addWidget(w_edit, 5)
 
             r_edit = QLineEdit(s["reps"])
-            r_edit.setPlaceholderText("0")
-            r_edit.setAlignment(Qt.AlignCenter)
-            r_edit.textChanged.connect(lambda v, i=idx, j=s_idx: self._update(i, j, "reps", v))
-            row_lay.addWidget(r_edit, 3)
-
-            type_combo = QComboBox()
-            type_combo.setFixedHeight(34)
-            for code, name in SET_TYPES:
-                type_combo.addItem(f"[{code}] {name}", userData=code)
-            current_type = s.get("set_type", "N")
-            for ti in range(type_combo.count()):
-                if type_combo.itemData(ti) == current_type:
-                    type_combo.setCurrentIndex(ti)
-                    break
-            type_combo.currentIndexChanged.connect(
-                lambda _, i=idx, j=s_idx, cb=type_combo: self._update(i, j, "set_type", cb.currentData())
-            )
-            row_lay.addWidget(type_combo, 2)
+            r_edit.setPlaceholderText("10-12")
+            r_edit.setAlignment(Qt.AlignLeft)
+            r_edit.setFixedHeight(44)
+            r_edit.textChanged.connect(lambda v, i=ex_idx, j=s_idx: self._update(i, j, "reps", v))
+            row_lay.addWidget(r_edit, 5)
 
             check = QPushButton()
-            check.setFixedSize(48, 48)
+            check.setFixedSize(52, 52)
             check.setCheckable(True)
             check.setChecked(s["done"])
             self._style_check(check, s["done"])
-            check.clicked.connect(lambda checked, i=idx, j=s_idx, b=check: self._toggle_done(i, j, checked, b))
-            row_lay.addWidget(check, 1)
+            check.clicked.connect(lambda checked, i=ex_idx, j=s_idx, b=check, p=ex_prog_lbl: 
+                                self._toggle_done(i, j, checked, b, p))
+            row_lay.addWidget(check, 0)
 
-            self._series_container.addWidget(row_w)
+            series_layout.addWidget(row_w)
+        
+        card_lay.addLayout(series_layout)
 
-        self._update_progress()
-        self._prev_btn.setEnabled(idx > 0)
-        self._next_btn.setText(" Finalizar" if idx == len(self._exercises) - 1 else "Próximo ")
-        if idx == len(self._exercises) - 1:
-            self._next_btn.setIcon(qta.icon("fa5s.flag-checkered", color="#000000"))
-            self._next_btn.setLayoutDirection(Qt.LeftToRight)
-        else:
-            self._next_btn.setIcon(qta.icon("fa5s.arrow-right", color="#ffffff"))
-            self._next_btn.setLayoutDirection(Qt.RightToLeft)
+        return card
 
     def _style_check(self, btn: QPushButton, done: bool):
         if done:
@@ -623,13 +527,12 @@ class ActiveWorkoutScreen(QWidget):
     def _update(self, ex_idx: int, s_idx: int, key: str, val: str):
         self._series_data[ex_idx][s_idx][key] = val
 
-    def _toggle_done(self, ex_idx: int, s_idx: int, checked: bool, btn: QPushButton):
+    def _toggle_done(self, ex_idx: int, s_idx: int, checked: bool, btn: QPushButton, prog_lbl: QLabel):
         self._series_data[ex_idx][s_idx]["done"] = checked
         self._style_check(btn, checked)
         series = self._series_data[ex_idx]
         done = sum(1 for s in series if s["done"])
-        self._ex_prog_lbl.setText(f"{done}/{len(series)}")
-        self._set_indicator.update_state(len(series), done)
+        prog_lbl.setText(f"{done}/{len(series)}")
         self._update_progress()
         if checked and self._session_id:
             s = self._series_data[ex_idx][s_idx]
@@ -653,16 +556,6 @@ class ActiveWorkoutScreen(QWidget):
             QTimer.singleShot(0, lambda: self._prog_fill.setFixedWidth(
                 int(self._prog_bar.width() * done / total)
             ))
-
-    def _prev(self):
-        if self._current_idx > 0:
-            self._show_exercise(self._current_idx - 1)
-
-    def _next(self):
-        if self._current_idx < len(self._exercises) - 1:
-            self._show_exercise(self._current_idx + 1)
-        else:
-            self._finish()
 
     # ------------------------------------------------------------------
     # Finalização

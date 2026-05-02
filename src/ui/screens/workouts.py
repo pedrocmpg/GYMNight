@@ -904,8 +904,7 @@ class WorkoutsTab(QWidget):
 
         for i, r in enumerate(routines):
             exercises_with_sets = self._rm.get_routine_exercises(r.id)
-            exs = [ex for ex, _ in exercises_with_sets]  # Extrai apenas os exercícios
-            c = RoutineCard(r, exs)
+            c = RoutineCard(r, exercises_with_sets)
             c.start_clicked.connect(self._on_start)
             c.edit_clicked.connect(self._on_edit)
             self._list_lay.insertWidget(i, c)

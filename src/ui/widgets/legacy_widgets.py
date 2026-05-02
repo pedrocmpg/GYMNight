@@ -146,10 +146,10 @@ class RoutineCard(QFrame):
     start_clicked = Signal(object)   # Routine
     edit_clicked  = Signal(object)   # Routine
 
-    def __init__(self, routine: Routine, exercises: list[Exercise], parent=None):
+    def __init__(self, routine: Routine, exercises_with_sets: list[tuple[Exercise, int]], parent=None):
         super().__init__(parent)
         self._routine   = routine
-        self._exercises = exercises
+        self._exercises_with_sets = exercises_with_sets  # Lista de (Exercise, num_sets)
         self._expanded  = False
         self.setObjectName("card")
         self.setCursor(Qt.PointingHandCursor)
@@ -179,9 +179,9 @@ class RoutineCard(QFrame):
         info = QVBoxLayout()
         info.setSpacing(2)
         info.addWidget(label(self._routine.name.upper(), "h3"))
-        ex_names = ", ".join(e.canonical_name for e in self._exercises[:3])
-        if len(self._exercises) > 3:
-            ex_names += f" +{len(self._exercises)-3}"
+        ex_names = ", ".join(ex.canonical_name for ex, _ in self._exercises_with_sets[:3])
+        if len(self._exercises_with_sets) > 3:
+            ex_names += f" +{len(self._exercises_with_sets)-3}"
         info.addWidget(label(ex_names, "sub"))
         hdr_lay.addLayout(info)
         hdr_lay.addStretch()
@@ -232,18 +232,19 @@ class RoutineCard(QFrame):
         c_lay.addSpacing(10)
 
         hdr_row = QHBoxLayout()
-        for txt, stretch in [("Exercício", 4), ("Séries", 1), ("Reps", 1), ("Descanso", 1)]:
+        for txt, stretch in [("Exercício", 4), ("Séries", 1), ("Reps", 1)]:
             hdr_row.addWidget(label(txt, "sub"), stretch)
         c_lay.addLayout(hdr_row)
         c_lay.addSpacing(6)
 
-        for ex in self._exercises:
+        for ex, num_sets in self._exercises_with_sets:
             row = QHBoxLayout()
             name = QLabel(ex.canonical_name.title())
             name.setStyleSheet(f"color:{C_TEXT}; font-weight:600;")
             row.addWidget(name, 4)
-            for val in ["3", "8-12", "60s"]:
-                row.addWidget(label(val, "sub"), 1)
+            # Mostra o número de séries específico deste exercício
+            row.addWidget(label(str(num_sets), "sub"), 1)
+            row.addWidget(label("8-12", "sub"), 1)
             c_lay.addLayout(row)
             c_lay.addSpacing(4)
 
