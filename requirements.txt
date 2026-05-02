@@ -4,5 +4,6 @@ pydantic==2.6.1
 sqlalchemy==2.0.27
 loguru
 python-dotenv
+numpy<2
 matplotlib
 qtawesome

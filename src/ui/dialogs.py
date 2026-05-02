@@ -6,11 +6,10 @@ from __future__ import annotations
 import unicodedata
 
 import qtawesome as qta
-from PySide6.QtCore import Qt, QPoint
-from PySide6.QtGui import QStandardItem, QStandardItemModel
+from PySide6.QtCore import Qt, QPoint, QTimer, QEvent
 from PySide6.QtWidgets import (
-    QCompleter, QDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
-    QListView, QPushButton, QScrollArea, QSpinBox, QVBoxLayout, QWidget,
+    QDialog, QFrame, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem,
+    QPushButton, QScrollArea, QSpinBox, QVBoxLayout, QWidget, QCheckBox,
 )
 
 from engine import NormalizationEngine
@@ -71,93 +70,143 @@ class FramelessDialog(QDialog):
 
 class ExerciseLineEdit(QLineEdit):
     """
-    Campo de texto com autocomplete de exercícios.
-    - Filtra por substring (MatchContains), case-insensitive, sem acentos
+    Campo de texto com popup de busca de exercícios.
+    - Filtra por substring (busca "rem" encontra "remada")
     - Exibe "nome [Grupo Muscular]" na lista
     - Popup abre ao digitar qualquer caractere
-    - Não auto-preenche antes do usuário confirmar
+    - Opcionalmente filtra apenas exercícios com valores MET
     """
 
-    def __init__(self, norm: NormalizationEngine, parent=None):
+    def __init__(self, norm: NormalizationEngine, parent=None, filter_met: bool = False):
         super().__init__(parent)
         self._norm = norm
+        self._filter_met = filter_met
+        self._popup = None  # Será criado quando necessário
         self.setPlaceholderText("Digite para buscar exercício...")
-        self._build_completer()
-
-    def _build_completer(self):
-        # Carrega todos os exercícios
-        rows = self._norm._db.fetchall(
-            "SELECT id, canonical_name, user_input_name FROM exercises ORDER BY canonical_name"
-        )
-        exercises = [
-            self._norm._load_exercise(r["id"], r["canonical_name"], r["user_input_name"])
-            for r in rows
-        ]
-
-        # Modelo com display "nome [Grupo]" e dado normalizado para filtro
-        self._model = QStandardItemModel()
-        for ex in exercises:
-            muscle = ex.muscle_group_name or "—"
-            display = f"{ex.canonical_name.title()}  [{muscle}]"
-            item = QStandardItem(display)
-            # Armazena nome normalizado para filtro sem acentos
-            item.setData(_norm(ex.canonical_name), Qt.UserRole)
-            item.setData(ex.canonical_name, Qt.UserRole + 1)  # nome original
-            self._model.appendRow(item)
-
-        # QCompleter com MatchContains
-        self._completer = QCompleter(self._model, self)
-        self._completer.setCompletionMode(QCompleter.PopupCompletion)
-        self._completer.setFilterMode(Qt.MatchContains)
-        self._completer.setCaseSensitivity(Qt.CaseInsensitive)
-        self._completer.setMaxVisibleItems(14)
-        self._completer.setCompletionRole(Qt.DisplayRole)
-
-        # Popup estilizado
-        popup = QListView()
-        popup.setStyleSheet(f"""
-            QListView {{
-                background: {C_CARD};
-                border: 1px solid {C_GREEN};
-                border-radius: {RADIUS_MD}px;
-                outline: none;
-                font-size: 13px;
-                padding: 4px;
-            }}
-            QListView::item {{
-                padding: 8px 14px;
-                color: {C_TEXT2};
-                border-bottom: 1px solid {C_BORDER};
-            }}
-            QListView::item:hover {{
+        self.setFixedHeight(44)
+        self.setStyleSheet(f"""
+            QLineEdit {{
                 background: {C_CARD2};
                 color: {C_TEXT};
+                border: 2px solid {C_BORDER};
+                border-radius: {RADIUS_MD}px;
+                padding: 10px 14px;
+                font-size: 14px;
             }}
-            QListView::item:selected {{
-                background: #1a2e1a;
-                color: {C_GREEN};
-            }}
+            QLineEdit:focus {{ border-color: {C_GREEN}; }}
         """)
-        self._completer.setPopup(popup)
-        self.setCompleter(self._completer)
+        
+        self.textChanged.connect(self._on_text_changed)
 
-        # Ao confirmar, preenche com o nome canônico (sem o "[Grupo]")
-        self._completer.activated[str].connect(self._on_activated)
+    def _ensure_popup(self):
+        """Cria o popup se ainda não existir."""
+        if self._popup is not None:
+            return
+        
+        # Popup de resultados - agora como widget normal, não ToolTip
+        self._popup = QListWidget(self.parent())
+        self._popup.setMaximumHeight(250)
+        self._popup.setStyleSheet(f"""
+            QListWidget {{
+                background: #1e1e1e;
+                border: 2px solid {C_GREEN};
+                border-radius: {RADIUS_MD}px;
+                font-size: 14px;
+            }}
+            QListWidget::item {{ padding: 10px 14px; color: {C_TEXT2}; }}
+            QListWidget::item:hover {{ background: #2a2a2a; color: {C_TEXT}; }}
+            QListWidget::item:selected {{ background: #1a2e1a; color: {C_GREEN}; }}
+        """)
+        self._popup.hide()
+        self._popup.itemClicked.connect(self._on_popup_click)
+        
+        # Adiciona o popup ao layout do parent
+        if self.parent() and hasattr(self.parent(), 'layout') and self.parent().layout():
+            parent_layout = self.parent().layout()
+            # Encontra o índice deste widget no layout
+            for i in range(parent_layout.count()):
+                item = parent_layout.itemAt(i)
+                if item and item.widget() == self:
+                    # Insere o popup logo após este widget
+                    parent_layout.insertWidget(i + 1, self._popup)
+                    break
 
-    def _on_activated(self, display_text: str):
-        """Extrai só o nome do exercício do display 'nome  [Grupo]'."""
-        name = display_text.split("  [")[0].strip()
-        self.blockSignals(True)
-        self.setText(name)
-        self.blockSignals(False)
+    def _get_exercises_with_met(self) -> set[int]:
+        """Retorna conjunto de IDs de exercícios que possuem valores MET parametrizados."""
+        rows = self._norm._db.fetchall("SELECT exercise_id FROM exercise_met_values")
+        return {row["exercise_id"] for row in rows}
 
-    def keyPressEvent(self, event):
-        super().keyPressEvent(event)
-        # Força o popup a abrir mesmo com texto curto
-        if self.text() and self._completer:
-            self._completer.setCompletionPrefix(self.text())
-            if self._completer.completionCount() > 0:
-                self._completer.complete()
+    def _on_text_changed(self, text: str):
+        """Atualiza o popup conforme o usuário digita."""
+        if not text.strip():
+            if self._popup:
+                self._popup.hide()
+            return
+        
+        # Garante que o popup existe
+        self._ensure_popup()
+        
+        # Busca direta no banco usando LIKE (case-insensitive)
+        search_pattern = f"%{text.lower()}%"
+        
+        # Query SQL com LIKE para busca por substring
+        if self._filter_met:
+            # Busca apenas exercícios com MET
+            rows = self._norm._db.fetchall("""
+                SELECT e.id, e.canonical_name, e.user_input_name
+                FROM exercises e
+                JOIN exercise_met_values m ON e.id = m.exercise_id
+                WHERE LOWER(e.canonical_name) LIKE ?
+                ORDER BY e.canonical_name
+                LIMIT 20
+            """, (search_pattern,))
+        else:
+            # Busca todos os exercícios
+            rows = self._norm._db.fetchall("""
+                SELECT e.id, e.canonical_name, e.user_input_name
+                FROM exercises e
+                WHERE LOWER(e.canonical_name) LIKE ?
+                ORDER BY e.canonical_name
+                LIMIT 20
+            """, (search_pattern,))
+        
+        if not rows:
+            self._popup.hide()
+            return
+        
+        # Busca exercícios com MET para indicador visual
+        met_exercises = self._get_exercises_with_met()
+            
+        self._popup.clear()
+        for row in rows:
+            ex = self._norm._load_exercise(row["id"], row["canonical_name"], row["user_input_name"])
+            # Adiciona indicador visual de MET
+            met_indicator = " 🔥" if ex.id in met_exercises else ""
+            item = QListWidgetItem(f"{ex.canonical_name.title()}  [{ex.muscle_group_name}]{met_indicator}")
+            item.setData(Qt.UserRole, ex.canonical_name)
+            self._popup.addItem(item)
+        
+        # Calcula tamanho do popup
+        row_h = self._popup.sizeHintForRow(0) if self._popup.count() > 0 else 30
+        self._popup.setFixedHeight(min(250, row_h * min(self._popup.count(), 8) + 8))
+        self._popup.show()
+
+    def _on_popup_click(self, item: QListWidgetItem):
+        """Quando o usuário clica em um item do popup."""
+        canonical_name = item.data(Qt.UserRole)
+        if canonical_name:
+            self.blockSignals(True)
+            self.setText(canonical_name.title())
+            self.blockSignals(False)
+        if self._popup:
+            self._popup.hide()
+
+    def focusOutEvent(self, event):
+        """Esconde o popup quando o campo perde o foco."""
+        # Pequeno delay para permitir clique no popup
+        if self._popup:
+            QTimer.singleShot(200, self._popup.hide)
+        super().focusOutEvent(event)
 
 
 # ---------------------------------------------------------------------------
@@ -170,6 +219,7 @@ class CreateWorkoutDialog(FramelessDialog):
         self._norm = norm
         self._ex_widgets: list[dict] = []
         self._day_buttons: list[QPushButton] = []
+        self._filter_met = True  # Filtro ativado por padrão
         self.setMinimumWidth(500)
         self.setMaximumHeight(700)
         
@@ -281,6 +331,34 @@ class CreateWorkoutDialog(FramelessDialog):
 
         # ===== EXERCÍCIOS =====
         self._form_lay.addWidget(label("Exercícios", "h3"))
+        
+        # Checkbox para filtrar apenas exercícios com MET
+        self._filter_met_checkbox = QCheckBox("Mostrar apenas exercícios com cálculo de calorias")
+        self._filter_met_checkbox.setChecked(self._filter_met)
+        self._filter_met_checkbox.setStyleSheet(f"""
+            QCheckBox {{
+                color: {C_TEXT2};
+                font-size: 13px;
+                spacing: 8px;
+            }}
+            QCheckBox::indicator {{
+                width: 18px;
+                height: 18px;
+                border: 2px solid {C_BORDER};
+                border-radius: 4px;
+                background: #1e1e1e;
+            }}
+            QCheckBox::indicator:checked {{
+                background: {C_GREEN};
+                border-color: {C_GREEN};
+            }}
+            QCheckBox::indicator:hover {{
+                border-color: {C_GREEN};
+            }}
+        """)
+        self._filter_met_checkbox.stateChanged.connect(self._on_filter_changed)
+        self._form_lay.addWidget(self._filter_met_checkbox)
+        
         self._ex_container = QVBoxLayout()
         self._ex_container.setSpacing(10)
         self._form_lay.addLayout(self._ex_container)
@@ -298,6 +376,22 @@ class CreateWorkoutDialog(FramelessDialog):
         save.clicked.connect(self.accept)
         lay.addWidget(save)
 
+    def _on_filter_changed(self, state):
+        """Atualiza o filtro MET e reconstrói todos os campos de exercício."""
+        self._filter_met = self._filter_met_checkbox.isChecked()
+        # Reconstrói todos os campos de exercício com o novo filtro
+        for w in self._ex_widgets:
+            old_text = w["name"].text()
+            # Remove o widget antigo
+            w["name"].deleteLater()
+            # Cria novo widget com filtro atualizado
+            new_name_edit = ExerciseLineEdit(self._norm, w["name"].parent(), filter_met=self._filter_met)
+            new_name_edit.setText(old_text)
+            # Substitui no layout
+            layout = w["name"].parent().layout()
+            layout.insertWidget(1, new_name_edit)  # Insere após o label
+            w["name"] = new_name_edit
+
     def _add_exercise_block(self):
         idx = len(self._ex_widgets) + 1
         block = QFrame()
@@ -307,8 +401,8 @@ class CreateWorkoutDialog(FramelessDialog):
         b_lay.setSpacing(8)
         b_lay.addWidget(label(f"Exercício {idx}", "sub"))
 
-        # Campo com autocomplete
-        name_edit = ExerciseLineEdit(self._norm, block)
+        # Campo com autocomplete (usa o filtro atual)
+        name_edit = ExerciseLineEdit(self._norm, block, filter_met=self._filter_met)
         b_lay.addWidget(name_edit)
 
         row = QHBoxLayout()

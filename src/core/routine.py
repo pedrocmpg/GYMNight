@@ -57,11 +57,24 @@ class RoutineManager:
 
         return total_calories
 
-    def create_routine(self, name: str, exercise_ids: list[int]) -> Routine:
+    def create_routine(self, name: str, exercise_ids: list[int], default_sets_list: list[int] = None) -> Routine:
+        """
+        Cria uma nova rotina com exercícios.
+        
+        Args:
+            name: Nome da rotina
+            exercise_ids: Lista de IDs dos exercícios
+            default_sets_list: Lista com número de séries para cada exercício (opcional, padrão 3)
+        """
         routine_id = self._db.execute_write("INSERT INTO routines (name) VALUES (?)", (name.strip(),))
+        
+        # Se não foi fornecido, usa 3 séries para todos
+        if default_sets_list is None:
+            default_sets_list = [3] * len(exercise_ids)
+        
         self._db.execute_many(
-            "INSERT INTO routine_exercises (routine_id, exercise_id, order_index) VALUES (?, ?, ?)",
-            [(routine_id, ex_id, idx) for idx, ex_id in enumerate(exercise_ids)],
+            "INSERT INTO routine_exercises (routine_id, exercise_id, order_index, default_sets) VALUES (?, ?, ?, ?)",
+            [(routine_id, ex_id, idx, default_sets_list[idx]) for idx, ex_id in enumerate(exercise_ids)],
         )
         row = self._db.fetchone("SELECT id, name, created_at FROM routines WHERE id = ?", (routine_id,))
         return Routine(id=row["id"], name=row["name"], created_at=row["created_at"])
@@ -70,10 +83,16 @@ class RoutineManager:
         rows = self._db.fetchall("SELECT id, name, created_at FROM routines ORDER BY name")
         return [Routine(id=r["id"], name=r["name"], created_at=r["created_at"]) for r in rows]
 
-    def get_routine_exercises(self, routine_id: int) -> list[Exercise]:
+    def get_routine_exercises(self, routine_id: int) -> list[tuple[Exercise, int]]:
+        """
+        Retorna lista de tuplas (Exercise, default_sets) para uma rotina.
+        
+        Returns:
+            Lista de tuplas (Exercise, número_de_séries)
+        """
         rows = self._db.fetchall(
             """
-            SELECT e.id, e.canonical_name, e.user_input_name
+            SELECT e.id, e.canonical_name, e.user_input_name, re.default_sets
             FROM routine_exercises re
             JOIN exercises e ON re.exercise_id = e.id
             WHERE re.routine_id = ?
@@ -82,7 +101,11 @@ class RoutineManager:
             (routine_id,),
         )
         return [
-            self._norm._load_exercise(r["id"], r["canonical_name"], r["user_input_name"]) for r in rows
+            (
+                self._norm._load_exercise(r["id"], r["canonical_name"], r["user_input_name"]),
+                r["default_sets"]
+            )
+            for r in rows
         ]
 
     def update_routine_template(self, routine_id: int, new_exercise_ids: list[int]) -> None:

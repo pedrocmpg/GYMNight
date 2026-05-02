@@ -632,20 +632,20 @@ class WorkoutsTab(QWidget):
         
         # Adiciona 3 séries iniciais
         for i in range(3):
-            series_rows.append(self._create_series_row(i + 1, series_container))
+            series_rows.append(self._create_series_row(i + 1, series_container, series_rows))
         
         b_lay.addLayout(series_container)
 
         # ===== BOTÃO ADICIONAR SÉRIE =====
         add_series_btn = QPushButton("+ Adicionar série")
-        add_series_btn.setFixedHeight(32)
+        add_series_btn.setFixedHeight(44)  # Aumentado de 32 para 44
         add_series_btn.setStyleSheet("""
             QPushButton {
                 background-color: #151515;
                 color: #a2ff00;
                 border: 1px solid #222222;
                 border-radius: 6px;
-                font-size: 12px;
+                font-size: 13px;
                 font-weight: 600;
             }
             QPushButton:hover { 
@@ -657,7 +657,7 @@ class WorkoutsTab(QWidget):
         
         # Conecta o botão para adicionar nova série
         def add_new_series():
-            new_row = self._create_series_row(len(series_rows) + 1, series_container)
+            new_row = self._create_series_row(len(series_rows) + 1, series_container, series_rows)
             series_rows.append(new_row)
         
         add_series_btn.clicked.connect(add_new_series)
@@ -670,7 +670,7 @@ class WorkoutsTab(QWidget):
             "series_container": series_container
         })
 
-    def _create_series_row(self, series_num: int, parent_layout: QVBoxLayout) -> dict:
+    def _create_series_row(self, series_num: int, parent_layout: QVBoxLayout, series_rows_list: list) -> dict:
         """Cria uma linha individual de série com número, peso e reps."""
         row = QHBoxLayout()
         row.setSpacing(12)
@@ -728,14 +728,58 @@ class WorkoutsTab(QWidget):
         """)
         row.addWidget(reps_input, 1)
         
-        parent_layout.addLayout(row)
-        
-        return {
+        # Cria o dicionário da série ANTES de criar o botão
+        series_dict = {
             "num_label": num_lbl,
             "peso": peso_input,
             "reps": reps_input,
             "layout": row
         }
+        
+        # Botão de remover série (lixeira)
+        remove_btn = QPushButton()
+        remove_btn.setIcon(qta.icon("fa5s.trash", color="#ff4444"))
+        remove_btn.setFixedSize(36, 36)
+        remove_btn.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                border: 1px solid #333333;
+                border-radius: 6px;
+            }
+            QPushButton:hover {
+                background: rgba(255, 68, 68, 0.1);
+                border-color: #ff4444;
+            }
+            QPushButton:pressed {
+                background: rgba(255, 68, 68, 0.2);
+            }
+        """)
+        remove_btn.setCursor(Qt.PointingHandCursor)
+        
+        # Conecta o botão para remover a série
+        def remove_series():
+            # Remove da lista primeiro
+            if series_dict in series_rows_list:
+                series_rows_list.remove(series_dict)
+            
+            # Remove os widgets do layout
+            for i in range(row.count()):
+                item = row.itemAt(i)
+                if item.widget():
+                    item.widget().deleteLater()
+            parent_layout.removeItem(row)
+            
+            # Renumera as séries restantes
+            for i, series_data in enumerate(series_rows_list):
+                series_data["num_label"].setText(str(i + 1))
+        
+        remove_btn.clicked.connect(remove_series)
+        series_dict["remove_btn"] = remove_btn
+        row.addWidget(remove_btn)
+        
+        parent_layout.addLayout(row)
+        
+        return series_dict
 
     def _show_create_form(self):
         # Limpa o formulário antes de exibir
@@ -814,7 +858,8 @@ class WorkoutsTab(QWidget):
         # ===== 4. SALVAMENTO NO BANCO =====
         try:
             ex_ids = [self._norm.get_or_create(e["name"]).id for e in exercises]
-            self._rm.create_routine(workout_name, ex_ids)
+            default_sets_list = [e["series_count"] for e in exercises]
+            self._rm.create_routine(workout_name, ex_ids, default_sets_list)
             
             # Feedback de sucesso
             total_series = sum(e["series_count"] for e in exercises)
@@ -858,7 +903,8 @@ class WorkoutsTab(QWidget):
             return
 
         for i, r in enumerate(routines):
-            exs = self._rm.get_routine_exercises(r.id)
+            exercises_with_sets = self._rm.get_routine_exercises(r.id)
+            exs = [ex for ex, _ in exercises_with_sets]  # Extrai apenas os exercícios
             c = RoutineCard(r, exs)
             c.start_clicked.connect(self._on_start)
             c.edit_clicked.connect(self._on_edit)

@@ -25,6 +25,49 @@ A maioria dos aplicativos de fitness está repleta de recursos sociais e interfa
 * **Banco de Dados:** SQLite
 * **Arquitetura:** Lógica limpa e relacionamentos de dados eficientes
 
+## 🚀 Como Executar
+
+### Instalação
+```bash
+# Clone o repositório
+git clone <seu-repositorio>
+cd GYMNight
+
+# Crie e ative o ambiente virtual
+python -m venv .venv
+source .venv/bin/activate  # Linux/WSL
+# ou
+.venv\Scripts\activate     # Windows
+
+# Instale as dependências
+pip install -r requirements.txt
+```
+
+### Execução
+
+**Linux/WSL (recomendado):**
+```bash
+cd ~/Projetos/GYMNight
+source .venv/bin/activate
+python main.py
+
+# Ou use o script
+./run.sh
+```
+
+**Windows nativo:**
+```powershell
+# PowerShell
+.\run.ps1
+
+# Ou CMD
+.\run.bat
+```
+
+> **Nota:** Os avisos "Could not parse stylesheet" são normais e não afetam o funcionamento.
+
+> **Veja mais detalhes:** [COMO_EXECUTAR.md](COMO_EXECUTAR.md)
+
 
 ## 📊 Funcionalidades Detalhadas
 

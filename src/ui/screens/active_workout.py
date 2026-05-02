@@ -98,6 +98,26 @@ class ActiveWorkoutScreen(QWidget):
         load_btn.setFixedHeight(34)
         load_btn.clicked.connect(self._load_from_combo)
         load_row.addWidget(load_btn)
+        
+        # Botão para adicionar exercício avulso
+        add_ex_btn = QPushButton(" Exercício")
+        add_ex_btn.setIcon(qta.icon("fa5s.plus", color=C_GREEN))
+        add_ex_btn.setFixedHeight(34)
+        add_ex_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent;
+                color: {C_GREEN};
+                border: 1px solid {C_GREEN};
+                border-radius: {RADIUS_MD}px;
+                padding: 0 14px;
+                font-weight: 700;
+                font-size: 12px;
+            }}
+            QPushButton:hover {{ background: rgba(162, 255, 0, 0.12); }}
+        """)
+        add_ex_btn.clicked.connect(self._add_exercise_dialog)
+        load_row.addWidget(add_ex_btn)
+        
         load_row.addStretch()
         lay.addLayout(load_row)
 
@@ -231,6 +251,140 @@ class ActiveWorkoutScreen(QWidget):
         self._main_stack.addWidget(self._build_summary_page())  # index 1
 
     # ------------------------------------------------------------------
+    # Adicionar exercício avulso
+    # ------------------------------------------------------------------
+
+    def _add_exercise_dialog(self):
+        """Abre diálogo para adicionar exercício avulso ao treino."""
+        from src.ui.dialogs import ExerciseLineEdit, FramelessDialog
+        from PySide6.QtWidgets import QListWidget, QListWidgetItem
+        
+        dlg = FramelessDialog("ADICIONAR EXERCÍCIO", self)
+        dlg.setMinimumWidth(500)
+        dlg.setMaximumHeight(400)
+        
+        lay = dlg.content_layout()
+        lay.addWidget(label("Buscar exercício", "h3"))
+        
+        # Campo de busca com popup
+        search = QLineEdit()
+        search.setPlaceholderText("Digite para buscar exercício...")
+        search.setFixedHeight(44)
+        lay.addWidget(search)
+        
+        # Popup de resultados
+        popup = QListWidget(dlg)
+        popup.setMaximumHeight(250)
+        popup.setStyleSheet(f"""
+            QListWidget {{
+                background: #1e1e1e;
+                border: 1px solid {C_GREEN};
+                border-radius: {RADIUS_MD}px;
+                font-size: 14px;
+            }}
+            QListWidget::item {{ padding: 10px 14px; color: {C_TEXT2}; }}
+            QListWidget::item:hover {{ background: #2a2a2a; color: {C_TEXT}; }}
+            QListWidget::item:selected {{ background: #1a2e1a; color: {C_GREEN}; }}
+        """)
+        lay.addWidget(popup)
+        
+        selected_exercise = [None]  # Lista para capturar o exercício selecionado
+        
+        def on_search_changed(text):
+            if not text.strip():
+                popup.clear()
+                return
+            
+            # Normaliza o texto de busca
+            search_normalized = self._norm._normalize_text(text)
+            
+            # Busca todos os exercícios
+            rows = self._norm._db.fetchall(
+                "SELECT id, canonical_name, user_input_name FROM exercises ORDER BY canonical_name"
+            )
+            
+            # Busca exercícios com MET
+            met_rows = self._norm._db.fetchall("SELECT exercise_id FROM exercise_met_values")
+            met_exercises = {row["exercise_id"] for row in met_rows}
+            
+            # Filtra por substring
+            matches = []
+            for row in rows:
+                canonical = row["canonical_name"]
+                if search_normalized in canonical:
+                    # Prioriza exercícios com MET
+                    if row["id"] in met_exercises:
+                        ex = self._norm._load_exercise(row["id"], canonical, row["user_input_name"])
+                        matches.append(ex)
+                    
+                    if len(matches) >= 20:
+                        break
+            
+            # Adiciona exercícios sem MET se houver espaço
+            if len(matches) < 20:
+                for row in rows:
+                    canonical = row["canonical_name"]
+                    if search_normalized in canonical and row["id"] not in met_exercises:
+                        ex = self._norm._load_exercise(row["id"], canonical, row["user_input_name"])
+                        matches.append(ex)
+                        
+                        if len(matches) >= 20:
+                            break
+            
+            popup.clear()
+            for ex in matches:
+                met_indicator = " 🔥" if ex.id in met_exercises else ""
+                item = QListWidgetItem(f"{ex.canonical_name.title()}  [{ex.muscle_group_name}]{met_indicator}")
+                item.setData(Qt.UserRole, ex)
+                popup.addItem(item)
+        
+        def on_item_clicked(item):
+            selected_exercise[0] = item.data(Qt.UserRole)
+            dlg.accept()
+        
+        search.textChanged.connect(on_search_changed)
+        popup.itemClicked.connect(on_item_clicked)
+        
+        # Botões
+        btn_row = QHBoxLayout()
+        btn_cancel = QPushButton("Cancelar")
+        btn_cancel.setObjectName("ghost")
+        btn_cancel.clicked.connect(dlg.reject)
+        btn_row.addWidget(btn_cancel)
+        
+        btn_add = QPushButton(" Adicionar")
+        btn_add.setIcon(qta.icon("fa5s.plus", color="#000000"))
+        btn_add.clicked.connect(lambda: dlg.accept() if popup.currentItem() else None)
+        btn_row.addWidget(btn_add)
+        lay.addLayout(btn_row)
+        
+        if dlg.exec() == QDialog.Accepted and selected_exercise[0]:
+            self._add_exercise_to_workout(selected_exercise[0])
+
+    def _add_exercise_to_workout(self, exercise: Exercise):
+        """Adiciona um exercício avulso ao treino atual."""
+        if not self._session_id:
+            QMessageBox.warning(self, "Atenção", "Inicie um treino antes de adicionar exercícios.")
+            return
+        
+        # Adiciona o exercício à lista
+        self._exercises.append(exercise)
+        
+        # Adiciona séries padrão para o novo exercício
+        self._series_data.append([
+            {"weight": "", "reps": "", "set_type": "N", "done": False, "saved": False}
+            for _ in range(4)
+        ])
+        
+        # Reconstrói as tabs
+        self._build_tabs()
+        
+        # Mostra o novo exercício
+        self._show_exercise(len(self._exercises) - 1)
+        
+        QMessageBox.information(self, "Sucesso", f"Exercício '{exercise.canonical_name.title()}' adicionado!")
+
+    # ------------------------------------------------------------------
     # Cardio
     # ------------------------------------------------------------------
 
@@ -289,12 +443,12 @@ class ActiveWorkoutScreen(QWidget):
         routine = self._routine_combo.currentData()
         if routine is None:
             return
-        exercises = self._rm.get_routine_exercises(routine.id)
-        self._exercises = exercises
+        exercises_with_sets = self._rm.get_routine_exercises(routine.id)
+        self._exercises = [ex for ex, _ in exercises_with_sets]
         self._current_idx = 0
         self._series_data = [
-            [{"weight": "", "reps": "", "set_type": "N", "done": False} for _ in range(4)]
-            for _ in exercises
+            [{"weight": "", "reps": "", "set_type": "N", "done": False} for _ in range(num_sets)]
+            for _, num_sets in exercises_with_sets
         ]
         self._title.setText(routine.name.upper())
         self._build_tabs()
@@ -302,7 +456,8 @@ class ActiveWorkoutScreen(QWidget):
 
     def load_routine(self, routine: Routine, session_id: int):
         self._session_id  = session_id
-        self._exercises   = self._rm.get_routine_exercises(routine.id)
+        exercises_with_sets = self._rm.get_routine_exercises(routine.id)
+        self._exercises   = [ex for ex, _ in exercises_with_sets]  # Extrai apenas os exercícios
         self._current_idx = 0
         self._cardio_rows = []
         # Limpa cardio container
@@ -313,9 +468,10 @@ class ActiveWorkoutScreen(QWidget):
         self._no_cardio_lbl.setVisible(True)
 
         self._title.setText(routine.name.upper())
+        # Cria séries baseado no default_sets de cada exercício
         self._series_data = [
-            [{"weight": "", "reps": "", "set_type": "N", "done": False, "saved": False} for _ in range(4)]
-            for _ in self._exercises
+            [{"weight": "", "reps": "", "set_type": "N", "done": False, "saved": False} for _ in range(num_sets)]
+            for _, num_sets in exercises_with_sets
         ]
         self._populate_routine_combo()
         for i in range(self._routine_combo.count()):

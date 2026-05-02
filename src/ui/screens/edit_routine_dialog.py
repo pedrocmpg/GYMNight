@@ -7,7 +7,7 @@ from __future__ import annotations
 import qtawesome as qta
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
-    QFrame, QHBoxLayout, QScrollArea,
+    QFrame, QHBoxLayout, QScrollArea, QCheckBox,
     QLineEdit, QListWidget, QListWidgetItem,
     QMessageBox, QPushButton, QVBoxLayout, QWidget,
 )
@@ -40,11 +40,15 @@ class EditRoutineWidget(QWidget):
         self._search.clear()
         self._popup.hide()
         self._name.setText(routine.name)
-        exercises = self._rm.get_routine_exercises(routine.id)
+        exercises_with_sets = self._rm.get_routine_exercises(routine.id)
+        exercises = [ex for ex, _ in exercises_with_sets]  # Extrai apenas os exercícios
+        met_exercises = self._get_exercises_with_met()
         for ex in exercises:
             self._ex_ids.append(ex.id)
             self._ex_names.append(ex.canonical_name)
-            item = QListWidgetItem(f"{ex.canonical_name.title()}  [{ex.muscle_group_name}]")
+            # Adiciona indicador visual de MET
+            met_indicator = " 🔥" if ex.id in met_exercises else ""
+            item = QListWidgetItem(f"{ex.canonical_name.title()}  [{ex.muscle_group_name}]{met_indicator}")
             item.setData(Qt.UserRole, ex.id)
             self._list.addItem(item)
 
@@ -83,6 +87,34 @@ class EditRoutineWidget(QWidget):
 
         # Busca de exercício com popup
         lay.addWidget(label("Exercícios", "h3"))
+        
+        # Checkbox para filtrar apenas exercícios com MET
+        self._filter_met = QCheckBox("Mostrar apenas exercícios com cálculo de calorias")
+        self._filter_met.setChecked(True)  # Ativado por padrão
+        self._filter_met.setStyleSheet(f"""
+            QCheckBox {{
+                color: {C_TEXT2};
+                font-size: 13px;
+                spacing: 8px;
+            }}
+            QCheckBox::indicator {{
+                width: 18px;
+                height: 18px;
+                border: 2px solid {C_BORDER};
+                border-radius: 4px;
+                background: #1e1e1e;
+            }}
+            QCheckBox::indicator:checked {{
+                background: {C_GREEN};
+                border-color: {C_GREEN};
+            }}
+            QCheckBox::indicator:hover {{
+                border-color: {C_GREEN};
+            }}
+        """)
+        self._filter_met.stateChanged.connect(self._on_search_changed)
+        lay.addWidget(self._filter_met)
+        
         search_row = QHBoxLayout()
         self._search = QLineEdit()
         self._search.setPlaceholderText("Buscar exercício para adicionar...")
@@ -173,20 +205,59 @@ class EditRoutineWidget(QWidget):
         scroll.setWidget(content)
         root.addWidget(scroll)
 
-    def _on_search_changed(self, text: str):
+    def _get_exercises_with_met(self) -> set[int]:
+        """Retorna conjunto de IDs de exercícios que possuem valores MET parametrizados."""
+        rows = self._rm._db.fetchall("SELECT exercise_id FROM exercise_met_values")
+        return {row["exercise_id"] for row in rows}
+
+    def _on_search_changed(self, text: str = None):
+        # Se text não foi passado, pega do campo de busca
+        if text is None:
+            text = self._search.text()
+            
         if not text.strip():
             self._popup.hide()
             return
-        matches = self._norm.resolve(text, threshold=0.3)
+        
+        # Normaliza o texto de busca (lowercase, sem acentos)
+        search_normalized = self._norm._normalize_text(text)
+        
+        # Busca todos os exercícios
+        rows = self._norm._db.fetchall(
+            "SELECT id, canonical_name, user_input_name FROM exercises ORDER BY canonical_name"
+        )
+        
+        # Filtra por substring (busca "rem" encontra "remada", "supino reto remador", etc)
+        matches = []
+        met_exercises = self._get_exercises_with_met()
+        
+        for row in rows:
+            canonical = row["canonical_name"]
+            # Verifica se o texto de busca está contido no nome do exercício
+            if search_normalized in canonical:
+                # Filtra por MET se checkbox estiver marcado
+                if self._filter_met.isChecked() and row["id"] not in met_exercises:
+                    continue
+                    
+                ex = self._norm._load_exercise(row["id"], canonical, row["user_input_name"])
+                matches.append(ex)
+                
+                # Limita a 20 resultados
+                if len(matches) >= 20:
+                    break
+        
         if not matches:
             self._popup.hide()
             return
+            
         self._popup.clear()
-        for m in matches[:12]:
-            ex = m.exercise
-            item = QListWidgetItem(f"{ex.canonical_name.title()}  [{ex.muscle_group_name}]")
+        for ex in matches:
+            # Adiciona indicador visual de MET
+            met_indicator = " 🔥" if ex.id in met_exercises else ""
+            item = QListWidgetItem(f"{ex.canonical_name.title()}  [{ex.muscle_group_name}]{met_indicator}")
             item.setData(Qt.UserRole, ex)
             self._popup.addItem(item)
+            
         pos = self._search.mapToGlobal(self._search.rect().bottomLeft())
         self._popup.setFixedWidth(self._search.width())
         row_h = self._popup.sizeHintForRow(0) if self._popup.count() > 0 else 30
@@ -200,7 +271,9 @@ class EditRoutineWidget(QWidget):
         if ex and ex.id not in self._ex_ids:
             self._ex_ids.append(ex.id)
             self._ex_names.append(ex.canonical_name)
-            list_item = QListWidgetItem(f"{ex.canonical_name.title()}  [{ex.muscle_group_name}]")
+            # Adiciona indicador visual de MET
+            met_indicator = " 🔥" if ex.id in self._get_exercises_with_met() else ""
+            list_item = QListWidgetItem(f"{ex.canonical_name.title()}  [{ex.muscle_group_name}]{met_indicator}")
             list_item.setData(Qt.UserRole, ex.id)
             self._list.addItem(list_item)
         self._search.clear()
@@ -214,11 +287,19 @@ class EditRoutineWidget(QWidget):
             self._on_popup_click(self._popup.currentItem())
             return
         matches = self._norm.resolve(text, threshold=0.4)
+        
+        # Filtra por MET se checkbox estiver marcado
+        if self._filter_met.isChecked():
+            met_exercises = self._get_exercises_with_met()
+            matches = [m for m in matches if m.exercise.id in met_exercises]
+        
         ex = matches[0].exercise if matches else self._norm.get_or_create(text)
         if ex.id not in self._ex_ids:
             self._ex_ids.append(ex.id)
             self._ex_names.append(ex.canonical_name)
-            item = QListWidgetItem(f"{ex.canonical_name.title()}  [{ex.muscle_group_name}]")
+            # Adiciona indicador visual de MET
+            met_indicator = " 🔥" if ex.id in self._get_exercises_with_met() else ""
+            item = QListWidgetItem(f"{ex.canonical_name.title()}  [{ex.muscle_group_name}]{met_indicator}")
             item.setData(Qt.UserRole, ex.id)
             self._list.addItem(item)
         self._search.clear()
