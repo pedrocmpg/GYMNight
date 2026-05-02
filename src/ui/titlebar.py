@@ -121,18 +121,13 @@ def make_wm_buttons(win: QWidget, *, show_minimize: bool = True, show_fullscreen
     container.setObjectName("wm_ctrl_box")
     container.setStyleSheet(
         "QWidget#wm_ctrl_box {"
-        "  background: #1e1e1e;"
-        f"  border: 1px solid {C_BORDER};"
-        "  border-right: none;"
-        "  border-top: none;"
-        "  border-top-right-radius: 0px;"
-        "  border-bottom-left-radius: 10px;"
-        "  border-top-left-radius: 0px;"
+        "  background: transparent;"
+        "  border: none;"
         "}"
     )
 
     lay = QHBoxLayout(container)
-    lay.setContentsMargins(5, 5, 5, 5)
+    lay.setContentsMargins(0, 0, 0, 0)
     lay.setSpacing(4)
 
     if show_minimize:

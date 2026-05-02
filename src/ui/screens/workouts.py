@@ -57,7 +57,6 @@ class WorkoutsTab(QWidget):
         h.setTextFormat(Qt.RichText)
         h.setStyleSheet("font-size:26px; font-weight:800; color:#fff;")
         left.addWidget(h)
-        left.addWidget(label("Divisão ABC + seus treinos personalizados", "sub"))
         hdr.addLayout(left)
         hdr.addStretch()
 

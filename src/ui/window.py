@@ -16,10 +16,11 @@ from engine import NormalizationEngine, PerformanceAnalyzer, Routine, RoutineMan
 from src.ui.theme import C_BORDER, C_GREEN, C_SURFACE, C_TEXT2, RADIUS_MD
 from src.ui.titlebar import make_wm_buttons
 from src.ui.screens.dashboard import DashboardTab
+from src.ui.screens.statistics import StatisticsTab
 from src.ui.screens.workouts import WorkoutsTab
 from src.ui.screens.active_workout import ActiveWorkoutScreen
-from src.ui.screens.results import ResultsTab
 from src.ui.screens.setup import SetupScreen, load_user_data
+from loguru import logger
 
 
 # ---------------------------------------------------------------------------
@@ -51,10 +52,6 @@ class _RoundedWidget(QWidget):
         path = QPainterPath()
         path.addRoundedRect(0, 0, self.width(), self.height(), self.RADIUS, self.RADIUS)
         p.fillPath(path, QColor(C_SURFACE))
-        from PySide6.QtGui import QPen
-        pen = QPen(QColor(C_GREEN), 2)
-        p.setPen(pen)
-        p.drawPath(path)
         p.end()
 
 
@@ -230,36 +227,37 @@ class MainWindow(QMainWindow):
 
         self._titlebar = _TitleBar(self)
 
-        self._btn_dash     = QPushButton("Início")
-        self._btn_workouts = QPushButton("Treinos")
-        self._btn_results  = QPushButton("Resultados")
-        for btn in (self._btn_dash, self._btn_workouts, self._btn_results):
+        self._btn_dash       = QPushButton("Início")
+        self._btn_workouts   = QPushButton("Treinos")
+        self._btn_statistics = QPushButton("Estatísticas")
+        for btn in (self._btn_dash, self._btn_workouts, self._btn_statistics):
             btn.setFixedHeight(34)
         self._btn_dash.clicked.connect(lambda: self._navigate(0))
         self._btn_workouts.clicked.connect(lambda: self._navigate(1))
-        self._btn_results.clicked.connect(lambda: self._navigate(3))
+        self._btn_statistics.clicked.connect(lambda: (logger.info("Botão Estatísticas Clicado"), self._navigate(3)))
         self._titlebar.add_nav_button(self._btn_dash)
         self._titlebar.add_nav_button(self._btn_workouts)
-        self._titlebar.add_nav_button(self._btn_results)
+        self._titlebar.add_nav_button(self._btn_statistics)
 
         main_lay.addWidget(self._titlebar)
 
         self._stack = QStackedWidget()
         main_lay.addWidget(self._stack)
 
-        self._dash_tab    = DashboardTab(self._db)
-        self._workout_tab = WorkoutsTab(self._db, self._rm, self._norm)
-        self._active_tab  = ActiveWorkoutScreen(self._db, self._rm, self._analyzer, self._norm)
-        self._results_tab = ResultsTab(self._db)
+        self._dash_tab       = DashboardTab(self._db)
+        self._workout_tab    = WorkoutsTab(self._db, self._rm, self._norm)
+        self._active_tab     = ActiveWorkoutScreen(self._db, self._rm, self._analyzer, self._norm)
+        self._statistics_tab = StatisticsTab(self._db)
 
-        self._stack.addWidget(self._dash_tab)    # 0
-        self._stack.addWidget(self._workout_tab) # 1
-        self._stack.addWidget(self._active_tab)  # 2
-        self._stack.addWidget(self._results_tab) # 3
+        self._stack.addWidget(self._dash_tab)       # 0
+        self._stack.addWidget(self._workout_tab)    # 1
+        self._stack.addWidget(self._active_tab)     # 2
+        self._stack.addWidget(self._statistics_tab) # 3
 
         self._workout_tab.start_workout.connect(self._go_active)
         self._active_tab.finished.connect(self._go_workouts)
         self._active_tab.finished.connect(self._dash_tab.on_workout_finished)
+        self._active_tab.finished.connect(self._statistics_tab.on_workout_finished)
 
         self._outer_stack.addWidget(main_page)  # index 1
 
@@ -295,6 +293,10 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _navigate(self, idx: int):
+        logger.info(f"Navegando para índice: {idx}")
+        logger.info(f"Total de widgets no stack: {self._stack.count()}")
+        logger.info(f"Índice atual do stack: {self._stack.currentIndex()}")
+        
         from src.ui.theme import neon_glow
         active_style = (
             f"background:{C_GREEN}; color:#000; border:none;"
@@ -306,7 +308,7 @@ class MainWindow(QMainWindow):
         )
         
         # Aplica estilos e efeito neon
-        for btn, btn_idx in [(self._btn_dash, 0), (self._btn_workouts, 1), (self._btn_results, 3)]:
+        for btn, btn_idx in [(self._btn_dash, 0), (self._btn_workouts, 1), (self._btn_statistics, 3)]:
             if btn_idx == idx:
                 btn.setStyleSheet(active_style)
                 neon_glow(btn, C_GREEN, blur=68, opacity=486)
@@ -315,22 +317,30 @@ class MainWindow(QMainWindow):
                 btn.setGraphicsEffect(None)
         
         if idx == 0:
+            logger.info("Atualizando Dashboard")
             self._dash_tab.refresh()
         if idx == 3:
-            self._results_tab.refresh()
+            logger.info("Atualizando Estatísticas")
+            logger.info(f"Widget de estatísticas visível: {self._statistics_tab.isVisible()}")
+            logger.info(f"Widget de estatísticas habilitado: {self._statistics_tab.isEnabled()}")
+            self._statistics_tab.refresh()
+        
+        logger.info(f"Mudando stack para índice: {idx}")
         self._stack.setCurrentIndex(idx)
+        logger.info(f"Novo índice do stack: {self._stack.currentIndex()}")
+        logger.info(f"Widget atual: {self._stack.currentWidget()}")
 
     def _go_active(self, routine: Routine, session_id: int):
         self._active_tab.load_routine(routine, session_id)
         self._btn_dash.setEnabled(False)
         self._btn_workouts.setEnabled(False)
-        self._btn_results.setEnabled(False)
+        self._btn_statistics.setEnabled(False)
         self._stack.setCurrentIndex(2)
 
     def _go_workouts(self, payload: dict = None):
         self._btn_dash.setEnabled(True)
         self._btn_workouts.setEnabled(True)
-        self._btn_results.setEnabled(True)
+        self._btn_statistics.setEnabled(True)
         self._workout_tab.reload()
         self._navigate(1)
 

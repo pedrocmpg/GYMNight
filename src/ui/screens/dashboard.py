@@ -225,7 +225,7 @@ class DashboardTab(QWidget):
         self._stat_treinos   = _StatCard("fa5s.dumbbell", "Treinos esta semana", "0", "dias")
         self._stat_calorias  = _StatCard("fa5s.fire", "Calorias queimadas", "0", "kcal")
         self._stat_volume    = _StatCard("fa5s.weight", "Volume total", "0", "kg")
-        self._stat_sequencia = _StatCard("fa5s.chart-line", "Streak", "0", "dias")
+        self._stat_sequencia = _StatCard("fa5s.chart-line", "Streak", "0", "sem")
         
         for s in [self._stat_treinos, self._stat_calorias, self._stat_volume, self._stat_sequencia]:
             stats_row.addWidget(s)
@@ -373,7 +373,7 @@ class DashboardTab(QWidget):
         self._stat_sequencia.set_value(str(streak))
     
     def _calculate_streak(self) -> int:
-        """Calcula quantos dias seguidos o usuário treinou."""
+        """Calcula quantas semanas seguidas o usuário treinou (pelo menos 1 treino por semana)."""
         # Busca todas as datas únicas de treinos, ordenadas da mais recente para a mais antiga
         rows = self._db.fetchall(
             """SELECT DISTINCT date(started_at, 'unixepoch') AS workout_date
@@ -388,19 +388,37 @@ class DashboardTab(QWidget):
         workout_dates = [datetime.datetime.strptime(r["workout_date"], "%Y-%m-%d").date() for r in rows]
         today = datetime.datetime.now().date()
         
-        # Se não treinou hoje nem ontem, streak é 0
-        if workout_dates[0] < today - datetime.timedelta(days=1):
+        # Função para obter o início da semana (segunda-feira)
+        def get_week_start(date):
+            return date - datetime.timedelta(days=date.weekday())
+        
+        # Agrupa treinos por semana
+        weeks_with_workout = set()
+        for workout_date in workout_dates:
+            week_start = get_week_start(workout_date)
+            weeks_with_workout.add(week_start)
+        
+        # Ordena as semanas (mais recente primeiro)
+        sorted_weeks = sorted(weeks_with_workout, reverse=True)
+        
+        if not sorted_weeks:
             return 0
         
-        # Conta dias consecutivos
-        streak = 0
-        expected_date = today if workout_dates[0] == today else today - datetime.timedelta(days=1)
+        current_week_start = get_week_start(today)
         
-        for workout_date in workout_dates:
-            if workout_date == expected_date:
+        # Se a semana mais recente com treino não é a atual nem a anterior, streak é 0
+        if sorted_weeks[0] < current_week_start - datetime.timedelta(weeks=1):
+            return 0
+        
+        # Conta semanas consecutivas
+        streak = 0
+        expected_week = current_week_start if sorted_weeks[0] == current_week_start else current_week_start - datetime.timedelta(weeks=1)
+        
+        for week_start in sorted_weeks:
+            if week_start == expected_week:
                 streak += 1
-                expected_date -= datetime.timedelta(days=1)
-            elif workout_date < expected_date:
+                expected_week -= datetime.timedelta(weeks=1)
+            elif week_start < expected_week:
                 # Quebrou a sequência
                 break
         
