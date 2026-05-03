@@ -17,10 +17,11 @@ from engine import NormalizationEngine, Routine, RoutineManager
 from src.ui.dialogs import ExerciseLineEdit
 from src.ui.theme import (
     C_BORDER, C_CARD, C_CARD2, C_GREEN, C_GREEN_BG,
-    C_TEXT, C_TEXT2, C_TEXT3, label, separator,
+    C_TEXT, C_TEXT2, C_TEXT3, C_BG, label, separator,
     RADIUS_MD, RADIUS_SM,
 )
 from src.ui.widgets import RoutineCard
+from src.ui.smooth_scroll import apply_smooth_scroll
 
 
 class WorkoutsTab(QWidget):
@@ -37,6 +38,7 @@ class WorkoutsTab(QWidget):
         self._build()
 
     def _build(self):
+        # Layout raiz sem margens
         root = QVBoxLayout(self)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
@@ -46,9 +48,16 @@ class WorkoutsTab(QWidget):
 
         # ── Página 0: lista de treinos ────────────────────────────────────
         list_page = QWidget()
-        lay = QVBoxLayout(list_page)
-        lay.setContentsMargins(24, 24, 24, 24)
-        lay.setSpacing(16)
+        page_layout = QVBoxLayout(list_page)
+        page_layout.setContentsMargins(0, 0, 0, 0)
+        page_layout.setSpacing(0)
+        
+        # Container para header e search (fora do scroll)
+        header_container = QWidget()
+        header_container.setStyleSheet(f"background:{C_BG};")
+        header_lay = QVBoxLayout(header_container)
+        header_lay.setContentsMargins(24, 24, 24, 16)
+        header_lay.setSpacing(16)
 
         hdr = QHBoxLayout()
         left = QVBoxLayout()
@@ -80,11 +89,24 @@ class WorkoutsTab(QWidget):
         hdr.addWidget(cardio_btn)
 
         new_btn = QPushButton(" Novo Treino")
-        new_btn.setIcon(qta.icon("fa5s.plus", color="#000000"))
+        new_btn.setIcon(qta.icon("fa5s.plus", color=C_GREEN))
         new_btn.setFixedHeight(38)
+        new_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent;
+                color: {C_GREEN};
+                border: 1px solid {C_GREEN};
+                border-radius: {RADIUS_MD}px;
+                padding: 0 16px;
+                font-weight: 700;
+                font-size: 13px;
+            }}
+            QPushButton:hover {{ background: rgba(162, 255, 0, 0.12); }}
+            QPushButton:pressed {{ background: {C_GREEN}; color: #000; }}
+        """)
         new_btn.clicked.connect(self._show_create_form)
         hdr.addWidget(new_btn)
-        lay.addLayout(hdr)
+        header_lay.addLayout(hdr)
 
         self._search = QLineEdit()
         self._search.setPlaceholderText("Pesquisar treino...")
@@ -103,18 +125,24 @@ class WorkoutsTab(QWidget):
             }}
         """)
         self._search.textChanged.connect(self._filter_routines)
-        lay.addWidget(self._search)
+        header_lay.addWidget(self._search)
+        
+        page_layout.addWidget(header_container)
 
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setStyleSheet(f"QScrollArea {{ background:{C_BG}; border:none; }}")
+        # Aplica rolagem suave otimizada
+        apply_smooth_scroll(scroll)
         self._list_w = QWidget()
+        self._list_w.setStyleSheet(f"background:{C_BG};")
         self._list_lay = QVBoxLayout(self._list_w)
-        self._list_lay.setContentsMargins(0, 0, 0, 0)
+        self._list_lay.setContentsMargins(24, 8, 24, 24)
         self._list_lay.setSpacing(10)
         self._list_lay.addStretch()
         scroll.setWidget(self._list_w)
-        lay.addWidget(scroll)
+        page_layout.addWidget(scroll)
 
         self._stack.addWidget(list_page)  # index 0
 
@@ -129,7 +157,96 @@ class WorkoutsTab(QWidget):
         self._edit_widget.cancelled.connect(lambda: self._stack.setCurrentIndex(0))
         self._stack.addWidget(self._edit_widget)  # index 3
 
+        # ── Página 4: confirmação de treino criado ────────────────────────
+        self._stack.addWidget(self._build_success_page())  # index 4
+
         self.reload()
+
+    # ------------------------------------------------------------------
+    # Página de sucesso (treino criado)
+    # ------------------------------------------------------------------
+
+    def _build_success_page(self) -> QWidget:
+        """Página de confirmação após criar um treino."""
+        page = QWidget()
+        page.setStyleSheet(f"background:{C_CARD};")
+        layout = QVBoxLayout(page)
+        layout.setContentsMargins(40, 60, 40, 40)
+        layout.setSpacing(24)
+        layout.setAlignment(Qt.AlignCenter)
+
+        # Ícone de sucesso
+        icon_label = QLabel("✓")
+        icon_label.setStyleSheet(f"""
+            font-size: 80px;
+            color: {C_GREEN};
+            font-weight: bold;
+        """)
+        icon_label.setAlignment(Qt.AlignCenter)
+        layout.addWidget(icon_label)
+
+        # Título
+        self._success_title = QLabel()
+        self._success_title.setStyleSheet("""
+            font-size: 28px;
+            font-weight: 800;
+            color: #fff;
+        """)
+        self._success_title.setAlignment(Qt.AlignCenter)
+        self._success_title.setWordWrap(True)
+        layout.addWidget(self._success_title)
+
+        # Card com detalhes do treino
+        details_card = QFrame()
+        details_card.setObjectName("card")
+        details_card.setStyleSheet(f"""
+            QFrame#card {{
+                background: {C_CARD};
+                border: 1px solid {C_BORDER};
+                border-radius: {RADIUS_MD}px;
+                padding: 24px;
+            }}
+        """)
+        details_layout = QVBoxLayout(details_card)
+        details_layout.setSpacing(16)
+
+        self._success_details = QLabel()
+        self._success_details.setStyleSheet(f"""
+            font-size: 16px;
+            color: {C_TEXT};
+            line-height: 1.6;
+        """)
+        self._success_details.setAlignment(Qt.AlignCenter)
+        self._success_details.setWordWrap(True)
+        details_layout.addWidget(self._success_details)
+
+        layout.addWidget(details_card)
+        layout.addStretch()
+
+        # Botão voltar
+        back_btn = QPushButton("← Voltar para Treinos")
+        back_btn.setMinimumHeight(56)
+        back_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: {C_GREEN};
+                color: #000;
+                border: none;
+                border-radius: {RADIUS_MD}px;
+                font-size: 16px;
+                font-weight: 700;
+                padding: 0 24px;
+            }}
+            QPushButton:hover {{
+                background: #b5ff00;
+            }}
+            QPushButton:pressed {{
+                background: #8ad900;
+            }}
+        """)
+        back_btn.clicked.connect(lambda: (self._stack.setCurrentIndex(0), self.reload()))
+        layout.addWidget(back_btn)
+
+        return page
 
     # ------------------------------------------------------------------
     # Pesquisa
@@ -388,7 +505,7 @@ class WorkoutsTab(QWidget):
 
     def _build_create_page(self) -> QWidget:
         page = QWidget()
-        page.setStyleSheet("background-color: #0f0f0f;")
+        page.setStyleSheet(f"background-color: {C_CARD};")
         outer = QVBoxLayout(page)
         outer.setContentsMargins(40, 20, 40, 32)
         outer.setSpacing(0)
@@ -416,9 +533,11 @@ class WorkoutsTab(QWidget):
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
-        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        scroll.setStyleSheet(f"QScrollArea {{ background: {C_CARD}; border: none; }}")
+        # Aplica rolagem suave otimizada
+        apply_smooth_scroll(scroll)
         form_w = QWidget()
-        form_w.setStyleSheet("background: transparent;")
+        form_w.setStyleSheet(f"background: {C_CARD};")
         self._form_lay = QVBoxLayout(form_w)
         self._form_lay.setSpacing(20)
         self._form_lay.setContentsMargins(0, 30, 0, 0)  # Padding-top generoso
@@ -860,20 +979,35 @@ class WorkoutsTab(QWidget):
             default_sets_list = [e["series_count"] for e in exercises]
             self._rm.create_routine(workout_name, ex_ids, default_sets_list)
             
-            # Feedback de sucesso
+            # Prepara dados para a tela de sucesso
             total_series = sum(e["series_count"] for e in exercises)
-            QMessageBox.information(
-                self,
-                "Treino Criado!",
-                f"✓ {workout_name}\n\n"
-                f"📋 {len(exercises)} exercício(s)\n"
-                f"🔢 {total_series} série(s) total\n"
-                f"📅 {days_str}"
-            )
             
-            # Volta para a lista e recarrega
-            self._stack.setCurrentIndex(0)
-            self.reload()
+            # Atualiza os labels da página de sucesso
+            self._success_title.setText(f"Treino Criado!")
+            
+            details_text = f"""
+                <div style='text-align: center;'>
+                    <p style='font-size: 20px; font-weight: 700; color: {C_GREEN}; margin-bottom: 16px;'>
+                        {workout_name}
+                    </p>
+                    <p style='margin: 8px 0;'>
+                        <span style='color: {C_TEXT2};'>📋</span> 
+                        <span style='font-weight: 600;'>{len(exercises)}</span> exercício(s)
+                    </p>
+                    <p style='margin: 8px 0;'>
+                        <span style='color: {C_TEXT2};'>🔢</span> 
+                        <span style='font-weight: 600;'>{total_series}</span> série(s) total
+                    </p>
+                    <p style='margin: 8px 0;'>
+                        <span style='color: {C_TEXT2};'>📅</span> 
+                        <span style='font-weight: 600;'>{days_str}</span>
+                    </p>
+                </div>
+            """
+            self._success_details.setText(details_text)
+            
+            # Mostra a página de sucesso
+            self._stack.setCurrentIndex(4)
             
         except Exception as e:
             QMessageBox.critical(

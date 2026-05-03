@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 
 from database import DatabaseConnection
 from src.ui.theme import C_GREEN, RADIUS_LG
+from src.ui.smooth_scroll import apply_smooth_scroll
 import qtawesome as qta
 
 
@@ -69,6 +70,8 @@ class _StatCard(QFrame):
         super().__init__(parent)
         self.setStyleSheet("QFrame { background:#1a1a1a; border:1px solid #2a2a2a; border-radius:12px; }")
         self.setMinimumWidth(200)
+        self.setMaximumHeight(140)  # Limita altura máxima
+        self.setSizePolicy(self.sizePolicy().horizontalPolicy(), self.sizePolicy().verticalPolicy())
         
         from src.ui.theme import neon_glow
         neon_glow(self, "#a2ff00", blur=20, opacity=60)
@@ -88,6 +91,7 @@ class _StatCard(QFrame):
         
         title_lbl = QLabel(title)
         title_lbl.setStyleSheet("color:#6b7280; font-size:13px; font-weight:500; font-family:sans-serif; background:transparent; border:none;")
+        self._title_lbl = title_lbl  # Guarda referência para ajuste dinâmico
         hdr.addWidget(title_lbl)
         hdr.addStretch()
         
@@ -96,7 +100,7 @@ class _StatCard(QFrame):
         # Container horizontal para número + unidade
         value_container = QHBoxLayout()
         value_container.setSpacing(8)
-        value_container.setAlignment(Qt.AlignLeft | Qt.AlignBaseline)
+        self._value_container = value_container  # Guarda referência para ajuste dinâmico
         
         self._val = QLabel(value)
         self._val.setStyleSheet("color:#fff; font-size:36px; font-weight:800; background:transparent; border:none;")
@@ -115,6 +119,53 @@ class _StatCard(QFrame):
     
     def set_value(self, v: str):
         self._val.setText(v)
+    
+    def adjust_font_size(self, window_width: int):
+        """Ajusta o tamanho da fonte baseado na largura da janela."""
+        # Calcula tamanho baseado na largura do card, não da janela
+        card_width = self.width()
+        
+        if card_width > 400:
+            # Cards muito largos (tela cheia) - fontes maiores e centralizado
+            value_size = 52
+            unit_size = 36
+            title_size = 15
+            padding = 24
+            align_center = True
+        elif card_width > 300:
+            # Cards médios
+            value_size = 39
+            unit_size = 26
+            title_size = 13
+            padding = 18
+            align_center = False
+        else:
+            # Cards normais
+            value_size = 36
+            unit_size = 25
+            title_size = 13
+            padding = 16
+            align_center = False
+        
+        # Atualiza padding
+        self.layout().setContentsMargins(padding, padding, padding, padding)
+        
+        # Atualiza alinhamento baseado no tamanho
+        if align_center:
+            self.layout().setAlignment(Qt.AlignCenter)
+            self._value_container.setAlignment(Qt.AlignCenter)
+        else:
+            self.layout().setAlignment(Qt.AlignTop)
+            self._value_container.setAlignment(Qt.AlignLeft | Qt.AlignBaseline)
+        
+        # Atualiza fontes
+        self._val.setStyleSheet(f"color:#fff; font-size:{value_size}px; font-weight:800; background:transparent; border:none;")
+        if self._unit:
+            self._unit.setStyleSheet(f"color:#9ca3af; font-size:{unit_size}px; font-weight:500; font-family:sans-serif; background:transparent; border:none;")
+        
+        # Atualiza título
+        if hasattr(self, '_title_lbl'):
+            self._title_lbl.setStyleSheet(f"color:#6b7280; font-size:{title_size}px; font-weight:500; font-family:sans-serif; background:transparent; border:none;")
 
 
 class _WeekDayIcon(QWidget):
@@ -179,7 +230,31 @@ class DashboardTab(QWidget):
     def __init__(self, db: DatabaseConnection, parent=None):
         super().__init__(parent)
         self._db = db
+        self._stat_cards = []  # Lista de cards para ajuste dinâmico
         self._build()
+    
+    def resizeEvent(self, event):
+        """Ajusta fontes dinamicamente ao redimensionar."""
+        super().resizeEvent(event)
+        window_width = self.width()
+        # Ajusta cada card baseado no seu próprio tamanho
+        for card in self._stat_cards:
+            card.adjust_font_size(window_width)
+        
+        # Ajusta banner
+        if hasattr(self, 'banner_label'):
+            if window_width > 1600:
+                banner_size = 52
+                sub_size = 16
+            elif window_width > 1400:
+                banner_size = 46
+                sub_size = 15
+            else:
+                banner_size = 40
+                sub_size = 14
+            
+            self.banner_label.setStyleSheet(f"font-size:{banner_size}px; font-weight:800; color:#fff; background:transparent; border:none;")
+            self._sub_label.setStyleSheet(f"font-size:{sub_size}px; color:#9ca3af; letter-spacing:1px; font-family:sans-serif; background:transparent; border:none;")
 
     def update_user(self, data: dict):
         name = data.get("name", "").upper()
@@ -190,10 +265,18 @@ class DashboardTab(QWidget):
         self._sub_label.setText(f"{int(weight)}kg · {height}cm · Meta: {goal}")
 
     def _build(self):
+        # Layout raiz sem margens
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+        
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
         scroll.setStyleSheet("QScrollArea { background:transparent; border:none; }")
+        
+        # Aplica rolagem suave otimizada
+        apply_smooth_scroll(scroll)
         
         content = QWidget()
         content.setStyleSheet("background:transparent;")
@@ -227,8 +310,10 @@ class DashboardTab(QWidget):
         self._stat_volume    = _StatCard("fa5s.weight", "Volume total", "0", "kg")
         self._stat_sequencia = _StatCard("fa5s.chart-line", "Streak", "0", "sem")
         
-        for s in [self._stat_treinos, self._stat_calorias, self._stat_volume, self._stat_sequencia]:
-            stats_row.addWidget(s)
+        self._stat_cards = [self._stat_treinos, self._stat_calorias, self._stat_volume, self._stat_sequencia]
+        
+        for s in self._stat_cards:
+            stats_row.addWidget(s, 1)  # Stretch igual para todos ocuparem espaço proporcional
         
         lay.addLayout(stats_row)
 
@@ -271,8 +356,8 @@ class DashboardTab(QWidget):
         lay.addStretch()
 
         scroll.setWidget(content)
-        root = QVBoxLayout(self)
-        root.setContentsMargins(0, 0, 0, 0)
+        
+        # Adiciona o scroll ao layout raiz ocupando toda a área
         root.addWidget(scroll)
 
     def refresh(self):

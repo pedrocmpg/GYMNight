@@ -49,7 +49,7 @@ DARK_QSS = f"""
 }}
 
 QMainWindow, QDialog {{
-    background-color: {C_BG};
+    background-color: transparent;
     color: {C_TEXT};
     font-size: 15px;
 }}
@@ -60,7 +60,13 @@ QWidget {{
 }}
 
 QMainWindow {{
-    background-color: {C_BG};
+    background-color: transparent;
+}}
+
+/* Container principal com bordas arredondadas */
+QWidget#mainContainer {{
+    background-color: {C_SURFACE};
+    border-radius: 15px;
 }}
 
 QScrollArea > QWidget > QWidget {{

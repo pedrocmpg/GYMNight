@@ -3,18 +3,16 @@ ui/screens/statistics.py
 Tela de Estatísticas: Dashboard Moderno com Radar Chart e Grid de Métricas
 """
 from __future__ import annotations
-import datetime
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QScrollArea,
-    QVBoxLayout, QWidget, QComboBox, QGridLayout,
+    QVBoxLayout, QWidget, QGridLayout,
 )
-from PySide6.QtGui import QPixmap
-import qtawesome as qta
 
 from database import DatabaseConnection
-from src.ui.theme import C_GREEN, C_BG, RADIUS_LG, neon_glow
+from src.ui.theme import C_GREEN, C_BG
+from src.ui.smooth_scroll import apply_smooth_scroll
 from loguru import logger
 
 # Matplotlib imports para o gráfico
@@ -89,9 +87,12 @@ class _RadarChart(QWidget):
         super().__init__(parent)
         
         # Configuração do Matplotlib
-        self.figure = Figure(figsize=(10, 10), facecolor='#0f0f0f')
+        self.figure = Figure(figsize=(10, 10), facecolor='#0a0a0a')
         self.canvas = FigureCanvasQTAgg(self.figure)
-        self.canvas.setStyleSheet("background:#0f0f0f; border:none;")
+        self.canvas.setStyleSheet("background:#0a0a0a; border:none;")
+        
+        # Otimização de performance: evita redesenho desnecessário
+        self.setAttribute(Qt.WA_OpaquePaintEvent)
         
         # Size Policy: Expandir em ambas as direções
         from PySide6.QtWidgets import QSizePolicy
@@ -115,18 +116,23 @@ class _RadarChart(QWidget):
         """
         self.figure.clear()
         
-        # Define os 6 grupos musculares principais
-        categories = ['Costas', 'Peito', 'Core', 'Ombros', 'Braços', 'Pernas']
+        # Define os 6 grupos musculares principais para o gráfico
+        # Agrupa Bíceps + Tríceps = Braços, e Abdômen = Core
+        categories = ['Peito', 'Costas', 'Ombros', 'Braços', 'Pernas', 'Core']
         
-        # Mapeia os dados recebidos para as categorias
+        # Mapeia os dados recebidos para as categorias do gráfico
         values = []
         for cat in categories:
-            # Busca o valor correspondente (case-insensitive)
             value = 0
-            for key, val in muscle_data.items():
-                if key.lower() == cat.lower():
-                    value = val
-                    break
+            if cat == 'Braços':
+                # Soma Bíceps + Tríceps
+                value = muscle_data.get('Bíceps', 0) + muscle_data.get('Tríceps', 0)
+            elif cat == 'Core':
+                # Abdômen vira Core
+                value = muscle_data.get('Abdômen', 0)
+            else:
+                # Busca direto no dicionário
+                value = muscle_data.get(cat, 0)
             values.append(value)
         
         # Se não há dados, exibe mensagem
@@ -138,9 +144,9 @@ class _RadarChart(QWidget):
                 color='#6b7280', fontsize=16, fontweight='500',
                 transform=ax.transAxes
             )
-            ax.set_facecolor('#0f0f0f')
+            ax.set_facecolor('#0a0a0a')
             ax.axis('off')
-            self.canvas.draw()
+            self.canvas.draw_idle()
             return
         
         # Normaliza os valores para porcentagem (0-100)
@@ -151,118 +157,50 @@ class _RadarChart(QWidget):
         num_vars = len(categories)
         
         # Calcula os ângulos para cada eixo
-        angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False).tolist()
+        angles = np.linspace(0, 2 * np.pi, num_vars, endpoint=False)
         
-        # Fecha o polígono
-        normalized_values += normalized_values[:1]
-        angles += angles[:1]
+        # Fecha o polígono: concatena o primeiro valor ao final
+        normalized_values = np.concatenate((normalized_values, [normalized_values[0]]))
+        angles = np.concatenate((angles, [angles[0]]))
         
-        # Cria o subplot polar (radar)
-        ax = self.figure.add_subplot(111, projection='polar', facecolor='#0f0f0f')
+        # Cria o subplot polar (radar) com fundo preto
+        ax = self.figure.add_subplot(111, projection='polar', facecolor='#0a0a0a')
+        self.figure.patch.set_facecolor('#0a0a0a')
         
-        # Remove margens da figura e ativa tight layout
-        self.figure.subplots_adjust(left=0, right=1, bottom=0, top=1)
-        self.figure.set_tight_layout(True)
-        
-        # Posicionamento absoluto do eixo: 80% da área, 10% de margem em cada lado
-        ax.set_position([0.1, 0.1, 0.8, 0.8])
-        
-        # Plota a área preenchida (Verde Neon com transparência)
-        ax.plot(angles, normalized_values, 'o-', linewidth=2.5, color='#b5ff00', zorder=3)
-        ax.fill(angles, normalized_values, alpha=0.3, color='#b5ff00', zorder=2)
+        # Remove margens da figura
+        self.figure.subplots_adjust(left=0.05, right=0.95, bottom=0.05, top=0.95)
         
         # Configura a escala fixa de 0 a 100
         ax.set_ylim(0, 100)
         
-        # Configura as labels dos músculos com fonte menor e posiciona fora do eixo
+        # Configura as linhas de grade CIRCULARES (mais visíveis, em cinza claro)
+        ax.set_yticks([25, 50, 75, 100])
+        ax.set_yticklabels([])  # Remove os números, mantém apenas as linhas
+        ax.yaxis.grid(True, color='#3a3a3a', linewidth=1.2, linestyle='-', alpha=0.8, zorder=1)
+        
+        # Configura as linhas RADIAIS (raios do centro para fora, em cinza claro)
+        ax.xaxis.grid(True, color='#3a3a3a', linewidth=1.2, linestyle='-', alpha=0.8, zorder=1)
+        
+        # Plota a área preenchida (Verde Neon com preenchimento mais escuro)
+        ax.plot(angles, normalized_values, 'o-', linewidth=3, color='#b5ff00', 
+                markersize=8, markerfacecolor='#b5ff00', markeredgecolor='#b5ff00', zorder=3)
+        ax.fill(angles, normalized_values, alpha=0.4, color='#6b8f00', zorder=2)
+        
+        # Posiciona os números de escala à direita (padrão do matplotlib)
+        ax.set_rlabel_position(0)
+        
+        # Configura as labels dos músculos (BRANCO e FORA do gráfico)
         ax.set_xticks(angles[:-1])
-        ax.set_xticklabels(categories, fontsize=9, color='#FFFFFF', weight='600')
+        ax.set_xticklabels(categories, fontsize=13, color='#FFFFFF', weight='600')
         
-        # Usa set_thetagrids para empurrar as labels para fora (frac > 1)
-        ax.set_thetagrids(np.degrees(angles[:-1]), categories, frac=1.2, 
-                          fontsize=9, color='#FFFFFF', weight='600')
-        
-        # Remove completamente os números de porcentagem do centro
-        ax.set_yticklabels([])
-        
-        # Estiliza a grade (grid) - linhas da teia em cinza escuro
-        ax.grid(True, color='#2a2a2a', linewidth=1, linestyle='-', zorder=1)
+        # Ajusta a posição das labels para FORA do gráfico
+        ax.tick_params(axis='x', pad=20)  # Aumenta o espaçamento das labels
         
         # Remove o círculo externo (spine)
         ax.spines['polar'].set_visible(False)
         
-        self.canvas.draw()
-
-
-class _TrophyCard(QFrame):
-    """Card de troféu para Streak ou Tempo Total - Design Profissional."""
-    
-    def __init__(self, icon_name: str, title: str, value: str, unit: str = "", parent=None):
-        super().__init__(parent)
-        self.setStyleSheet(
-            "QFrame { background:#1a1a1a; border:1px solid #222222; border-radius:12px; }"
-        )
-        self.setMinimumHeight(140)
-        
-        # Efeito neon
-        neon_glow(self, C_GREEN, blur=25, opacity=70)
-        
-        lay = QVBoxLayout(self)
-        lay.setContentsMargins(32, 28, 32, 28)
-        lay.setSpacing(12)
-        
-        # Container horizontal: ícone + valor + unidade (alinhados à esquerda)
-        top_row = QHBoxLayout()
-        top_row.setSpacing(16)
-        top_row.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        
-        # Ícone à esquerda
-        icon_label = QLabel()
-        icon_label.setAlignment(Qt.AlignCenter)
-        icon_label.setPixmap(qta.icon(icon_name, color=C_GREEN).pixmap(36, 36))
-        top_row.addWidget(icon_label)
-        
-        # Container para valor + unidade
-        value_container = QHBoxLayout()
-        value_container.setSpacing(6)
-        value_container.setAlignment(Qt.AlignLeft | Qt.AlignBaseline)
-        
-        self._value_label = QLabel(value)
-        self._value_label.setStyleSheet(
-            f"color:{C_GREEN}; font-size:48px; font-weight:500; "
-            "font-family:'Inter', 'Roboto', sans-serif; background:transparent; border:none;"
-        )
-        value_container.addWidget(self._value_label)
-        
-        if unit:
-            self._unit_label = QLabel(unit)
-            self._unit_label.setStyleSheet(
-                "color:#6b7280; font-size:24px; font-weight:500; "
-                "font-family:'Inter', 'Roboto', sans-serif; background:transparent; border:none;"
-            )
-            value_container.addWidget(self._unit_label)
-        else:
-            self._unit_label = None
-        
-        top_row.addLayout(value_container)
-        top_row.addStretch()
-        
-        lay.addLayout(top_row)
-        
-        # Título abaixo (alinhado à esquerda)
-        title_label = QLabel(title.upper())
-        title_label.setStyleSheet(
-            "color:#aaaaaa; font-size:12px; font-weight:600; letter-spacing:1.2px; "
-            "font-family:'Inter', 'Roboto', sans-serif; background:transparent; border:none;"
-        )
-        title_label.setAlignment(Qt.AlignLeft)
-        lay.addWidget(title_label)
-        
-        lay.addStretch()
-    
-    def set_value(self, value: str):
-        """Atualiza o valor exibido no card."""
-        self._value_label.setText(value)
+        # Usa draw_idle() para melhor performance
+        self.canvas.draw_idle()
 
 
 class _MuscleDistributionChart(QWidget):
@@ -286,10 +224,18 @@ class StatisticsTab(QWidget):
     
     def _build(self):
         """Constrói a interface da tela."""
+        # Layout raiz sem margens
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+        
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
         scroll.setStyleSheet("QScrollArea { background:transparent; border:none; }")
+        
+        # Aplica rolagem suave otimizada
+        apply_smooth_scroll(scroll)
         
         content = QWidget()
         content.setStyleSheet(f"background:{C_BG};")
@@ -305,62 +251,12 @@ class StatisticsTab(QWidget):
         )
         lay.addWidget(title)
         
-        # Seletor de período (QComboBox estilizado)
-        self._period_selector = QComboBox()
-        self._period_selector.addItems([
-            "Últimos 7 dias",
-            "Últimos 30 dias",
-            "Últimos 90 dias",
-            "Último ano",
-            "Todo o período"
-        ])
-        self._period_selector.setCurrentIndex(1)  # "Últimos 30 dias" por padrão
-        self._period_selector.setStyleSheet(
-            f"""
-            QComboBox {{
-                background:#0f0f0f;
-                color:#FFFFFF;
-                border:1px solid #2a2a2a;
-                border-radius:8px;
-                padding:10px 16px;
-                font-size:13px;
-                font-weight:600;
-                font-family:'Inter', 'Roboto', sans-serif;
-                min-width:180px;
-            }}
-            QComboBox:hover {{
-                border:1px solid {C_GREEN};
-            }}
-            QComboBox::drop-down {{
-                border:none;
-                width:30px;
-            }}
-            QComboBox::down-arrow {{
-                image: none;
-                border-left:5px solid transparent;
-                border-right:5px solid transparent;
-                border-top:5px solid #FFFFFF;
-                margin-right:8px;
-            }}
-            QComboBox QAbstractItemView {{
-                background:#0f0f0f;
-                color:#FFFFFF;
-                border:1px solid #2a2a2a;
-                selection-background-color:{C_GREEN};
-                selection-color:#0f0f0f;
-                padding:4px;
-            }}
-            """
-        )
-        self._period_selector.currentIndexChanged.connect(self.refresh)
-        lay.addWidget(self._period_selector, alignment=Qt.AlignLeft)
-        
         lay.addSpacing(16)
         
         # Gráfico de Radar (Distribuição Muscular)
         chart_card = QFrame()
         chart_card.setStyleSheet(
-            "QFrame { background:#0f0f0f; border:1px solid #2a2a2a; border-radius:12px; }"
+            "QFrame { background:#0a0a0a; border:1px solid #2a2a2a; border-radius:12px; }"
         )
         
         # Size Policy para o card expandir
@@ -402,8 +298,6 @@ class StatisticsTab(QWidget):
         lay.addStretch()
         
         scroll.setWidget(content)
-        root = QVBoxLayout(self)
-        root.setContentsMargins(0, 0, 0, 0)
         root.addWidget(scroll)
     
     def refresh(self):
@@ -425,14 +319,8 @@ class StatisticsTab(QWidget):
     
     def _get_period_days(self) -> int | None:
         """Retorna o número de dias do período selecionado, ou None para todo o período."""
-        period_map = {
-            "Últimos 7 dias": 7,
-            "Últimos 30 dias": 30,
-            "Últimos 90 dias": 90,
-            "Último ano": 365,
-            "Todo o período": None
-        }
-        return period_map.get(self._period_selector.currentText(), 30)
+        # Período fixo: últimos 30 dias
+        return 30
     
     def _get_date_filter(self, days: int | None) -> str:
         """Retorna a cláusula SQL para filtrar por período."""
@@ -607,17 +495,7 @@ class StatisticsTab(QWidget):
             logger.error(traceback.format_exc())
             return {}
     
-    def _refresh_streak(self):
-        """DEPRECATED - Método mantido para compatibilidade."""
-        pass
-    
-    def _calculate_streak(self) -> int:
-        """DEPRECATED - Método mantido para compatibilidade."""
-        return 0
-    
-    def _refresh_total_time(self):
-        """DEPRECATED - Método mantido para compatibilidade."""
-        pass
+
     
     def on_workout_finished(self, payload: dict):
         """Callback quando um treino é finalizado."""

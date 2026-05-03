@@ -511,6 +511,10 @@ class SetupScreen(QWidget):
         
         content_layout.addStretch()
         scroll.setWidget(scroll_content)
+        
+        # Otimização de performance: evita redesenho desnecessário do fundo
+        scroll_content.setAttribute(Qt.WA_OpaquePaintEvent)
+        
         lay.addWidget(scroll)
 
         # Seleciona masculino por padrão

@@ -30,11 +30,13 @@ from loguru import logger
 class _RoundedWidget(QWidget):
     """Widget central que clipa todos os filhos com border-radius."""
 
-    RADIUS = 12
+    RADIUS = 15
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setAttribute(Qt.WA_TranslucentBackground)
+        # Adiciona padding interno para evitar que o conteúdo toque as bordas
+        self.setContentsMargins(0, 0, 0, 0)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
@@ -49,9 +51,19 @@ class _RoundedWidget(QWidget):
     def paintEvent(self, event):
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
+        
+        # Desenha o fundo
         path = QPainterPath()
         path.addRoundedRect(0, 0, self.width(), self.height(), self.RADIUS, self.RADIUS)
         p.fillPath(path, QColor(C_SURFACE))
+        
+        # Desenha uma borda em cinza bem escuro (quase invisível)
+        pen = p.pen()
+        pen.setColor(QColor("#2a2a2a"))  # Cinza bem escuro, mesma cor do C_BORDER
+        pen.setWidth(1)
+        p.setPen(pen)
+        p.drawPath(path)
+        
         p.end()
 
 
@@ -70,8 +82,8 @@ class _TitleBar(QWidget):
         self.setStyleSheet(
             f"background:{C_SURFACE};"
             f"border-bottom:1px solid {C_BORDER};"
-            f"border-top-left-radius:12px;"
-            f"border-top-right-radius:12px;"
+            f"border-top-left-radius:15px;"
+            f"border-top-right-radius:15px;"
         )
 
         lay = QHBoxLayout(self)
@@ -181,7 +193,8 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("GYMNight")
         self.setMinimumSize(900, 620)
         self.resize(1100, 720)
-        self.setWindowFlags(Qt.WindowType.FramelessWindowHint)
+        # Configurações de transparência e frameless para evitar vazamento de cor nos cantos
+        self.setWindowFlags(Qt.WindowType.FramelessWindowHint | Qt.WindowType.NoDropShadowWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
 
         # Motor
@@ -203,16 +216,27 @@ class MainWindow(QMainWindow):
 
         # Outer rounded container
         central = _RoundedWidget()
+        central.setObjectName("mainContainer")
         self.setCentralWidget(central)
-        from src.ui.theme import neon_glow
-        neon_glow(central, C_GREEN, blur=135, opacity=540)
+        # Não aplicar neon_glow diretamente no central para evitar vazamento nos cantos
+        
+        # Adiciona margem externa para criar espaço de "respiro"
         root = QVBoxLayout(central)
-        root.setContentsMargins(0, 0, 0, 0)
+        root.setContentsMargins(1, 1, 1, 1)  # Margem mínima para conter bordas
         root.setSpacing(0)
+        
+        # Container interno que receberá o conteúdo
+        inner_container = QWidget()
+        inner_container.setStyleSheet(f"background: {C_SURFACE}; border-radius: 14px;")
+        root.addWidget(inner_container)
+        
+        inner_layout = QVBoxLayout(inner_container)
+        inner_layout.setContentsMargins(0, 0, 0, 0)
+        inner_layout.setSpacing(0)
 
         # Outer stack: page 0 = Setup, page 1 = Main app
         self._outer_stack = QStackedWidget()
-        root.addWidget(self._outer_stack)
+        inner_layout.addWidget(self._outer_stack)
 
         # --- Page 0: Setup screen ---
         self._setup_screen = SetupScreen()

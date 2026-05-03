@@ -414,8 +414,8 @@ class ActiveWorkoutScreen(QWidget):
         card.setObjectName("card")
         neon_glow(card, C_GREEN, blur=81, opacity=405)
         card_lay = QVBoxLayout(card)
-        card_lay.setContentsMargins(24, 24, 24, 24)
-        card_lay.setSpacing(18)
+        card_lay.setContentsMargins(20, 20, 20, 20)
+        card_lay.setSpacing(14)
 
         # Header do card
         card_hdr = QHBoxLayout()
@@ -429,13 +429,11 @@ class ActiveWorkoutScreen(QWidget):
         card_info = QVBoxLayout()
         card_info.setSpacing(2)
         ex_name_lbl = label(ex.canonical_name.upper(), "h2")
-        series = self._series_data[ex_idx]
-        ex_meta_lbl = label(f"{len(series)} séries × 8-12 reps — Descanso: 60s", "sub")
         card_info.addWidget(ex_name_lbl)
-        card_info.addWidget(ex_meta_lbl)
         card_hdr.addLayout(card_info)
         card_hdr.addStretch()
         
+        series = self._series_data[ex_idx]
         done = sum(1 for s in series if s["done"])
         ex_prog_lbl = QLabel(f"{done}/{len(series)}")
         ex_prog_lbl.setStyleSheet(f"color:{C_GREEN}; font-size:18px; font-weight:800; font-family:'Arial';")
@@ -506,8 +504,12 @@ class ActiveWorkoutScreen(QWidget):
             check.setCheckable(True)
             check.setChecked(s["done"])
             self._style_check(check, s["done"])
-            check.clicked.connect(lambda checked, i=ex_idx, j=s_idx, b=check, p=ex_prog_lbl: 
-                                self._toggle_done(i, j, checked, b, p))
+            
+            # Função auxiliar para capturar os parâmetros corretamente
+            def make_toggle_handler(ex_i, set_i, btn, prog, w_ed, r_ed):
+                return lambda checked: self._toggle_done(ex_i, set_i, checked, btn, prog, w_ed, r_ed)
+            
+            check.clicked.connect(make_toggle_handler(ex_idx, s_idx, check, ex_prog_lbl, w_edit, r_edit))
             row_lay.addWidget(check, 0)
 
             series_layout.addWidget(row_w)
@@ -527,7 +529,86 @@ class ActiveWorkoutScreen(QWidget):
     def _update(self, ex_idx: int, s_idx: int, key: str, val: str):
         self._series_data[ex_idx][s_idx][key] = val
 
-    def _toggle_done(self, ex_idx: int, s_idx: int, checked: bool, btn: QPushButton, prog_lbl: QLabel):
+    def _toggle_done(self, ex_idx: int, s_idx: int, checked: bool, btn: QPushButton, prog_lbl: QLabel, weight_edit: QLineEdit, reps_edit: QLineEdit):
+        # Validação: verifica se peso e reps estão preenchidos
+        if checked:
+            weight_val = weight_edit.text().strip()
+            reps_val = reps_edit.text().strip()
+            
+            # Verifica se os campos estão vazios
+            if not weight_val or not reps_val:
+                # Desmarca o botão
+                btn.setChecked(False)
+                
+                # Destaca os campos vazios com borda vermelha
+                if not weight_val:
+                    weight_edit.setStyleSheet(f"""
+                        background: transparent;
+                        color: {C_TEXT};
+                        border: none;
+                        border-bottom: 2px solid #ef4444;
+                        border-radius: 0px;
+                        padding: 10px 8px;
+                        font-size: 15px;
+                    """)
+                
+                if not reps_val:
+                    reps_edit.setStyleSheet(f"""
+                        background: transparent;
+                        color: {C_TEXT};
+                        border: none;
+                        border-bottom: 2px solid #ef4444;
+                        border-radius: 0px;
+                        padding: 10px 8px;
+                        font-size: 15px;
+                    """)
+                
+                # Mostra mensagem de erro
+                from PySide6.QtWidgets import QMessageBox
+                msg = QMessageBox(self)
+                msg.setIcon(QMessageBox.Warning)
+                msg.setWindowTitle("Campos obrigatórios")
+                msg.setText("Você deve preencher o peso e as repetições antes de marcar a série como concluída.")
+                msg.setStyleSheet(f"""
+                    QMessageBox {{
+                        background: {C_BG};
+                        color: {C_TEXT};
+                    }}
+                    QPushButton {{
+                        background: {C_GREEN};
+                        color: #000;
+                        border: none;
+                        border-radius: 6px;
+                        padding: 8px 16px;
+                        font-weight: 700;
+                    }}
+                    QPushButton:hover {{
+                        background: #b8ff33;
+                    }}
+                """)
+                msg.exec()
+                return
+        
+        # Remove destaque vermelho se estava presente
+        weight_edit.setStyleSheet(f"""
+            background: transparent;
+            color: {C_TEXT};
+            border: none;
+            border-bottom: 1px solid {C_BORDER};
+            border-radius: 0px;
+            padding: 10px 8px;
+            font-size: 15px;
+        """)
+        reps_edit.setStyleSheet(f"""
+            background: transparent;
+            color: {C_TEXT};
+            border: none;
+            border-bottom: 1px solid {C_BORDER};
+            border-radius: 0px;
+            padding: 10px 8px;
+            font-size: 15px;
+        """)
+        
         self._series_data[ex_idx][s_idx]["done"] = checked
         self._style_check(btn, checked)
         series = self._series_data[ex_idx]
