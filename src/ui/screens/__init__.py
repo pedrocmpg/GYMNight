@@ -6,6 +6,7 @@ from src.ui.screens.statistics import StatisticsTab
 from src.ui.screens.workouts import WorkoutsTab
 from src.ui.screens.setup import SetupScreen
 from src.ui.screens.active_workout import ActiveWorkoutScreen
+from src.ui.screens.gym_ai import GymAITab
 
 __all__ = [
     "DashboardTab",
@@ -13,4 +14,5 @@ __all__ = [
     "WorkoutsTab",
     "SetupScreen",
     "ActiveWorkoutScreen",
+    "GymAITab",
 ]

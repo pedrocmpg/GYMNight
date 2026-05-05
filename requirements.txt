@@ -7,3 +7,4 @@ python-dotenv
 numpy<2
 matplotlib
 qtawesome
+google-genai

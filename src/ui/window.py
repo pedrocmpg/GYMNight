@@ -20,6 +20,7 @@ from src.ui.screens.statistics import StatisticsTab
 from src.ui.screens.workouts import WorkoutsTab
 from src.ui.screens.active_workout import ActiveWorkoutScreen
 from src.ui.screens.setup import SetupScreen, load_user_data
+from src.ui.screens.gym_ai import GymAITab
 from loguru import logger
 
 
@@ -254,14 +255,17 @@ class MainWindow(QMainWindow):
         self._btn_dash       = QPushButton("Início")
         self._btn_workouts   = QPushButton("Treinos")
         self._btn_statistics = QPushButton("Estatísticas")
-        for btn in (self._btn_dash, self._btn_workouts, self._btn_statistics):
+        self._btn_gymai      = QPushButton("GymAI")
+        for btn in (self._btn_dash, self._btn_workouts, self._btn_statistics, self._btn_gymai):
             btn.setFixedHeight(34)
         self._btn_dash.clicked.connect(lambda: self._navigate(0))
         self._btn_workouts.clicked.connect(lambda: self._navigate(1))
         self._btn_statistics.clicked.connect(lambda: (logger.info("Botão Estatísticas Clicado"), self._navigate(3)))
+        self._btn_gymai.clicked.connect(lambda: self._navigate(4))
         self._titlebar.add_nav_button(self._btn_dash)
         self._titlebar.add_nav_button(self._btn_workouts)
         self._titlebar.add_nav_button(self._btn_statistics)
+        self._titlebar.add_nav_button(self._btn_gymai)
 
         main_lay.addWidget(self._titlebar)
 
@@ -272,11 +276,13 @@ class MainWindow(QMainWindow):
         self._workout_tab    = WorkoutsTab(self._db, self._rm, self._norm)
         self._active_tab     = ActiveWorkoutScreen(self._db, self._rm, self._analyzer, self._norm)
         self._statistics_tab = StatisticsTab(self._db)
+        self._gymai_tab      = GymAITab()
 
         self._stack.addWidget(self._dash_tab)       # 0
         self._stack.addWidget(self._workout_tab)    # 1
         self._stack.addWidget(self._active_tab)     # 2
         self._stack.addWidget(self._statistics_tab) # 3
+        self._stack.addWidget(self._gymai_tab)      # 4
 
         self._workout_tab.start_workout.connect(self._go_active)
         self._active_tab.finished.connect(self._go_workouts)
@@ -332,7 +338,7 @@ class MainWindow(QMainWindow):
         )
         
         # Aplica estilos e efeito neon
-        for btn, btn_idx in [(self._btn_dash, 0), (self._btn_workouts, 1), (self._btn_statistics, 3)]:
+        for btn, btn_idx in [(self._btn_dash, 0), (self._btn_workouts, 1), (self._btn_statistics, 3), (self._btn_gymai, 4)]:
             if btn_idx == idx:
                 btn.setStyleSheet(active_style)
                 neon_glow(btn, C_GREEN, blur=68, opacity=486)
@@ -359,12 +365,14 @@ class MainWindow(QMainWindow):
         self._btn_dash.setEnabled(False)
         self._btn_workouts.setEnabled(False)
         self._btn_statistics.setEnabled(False)
+        self._btn_gymai.setEnabled(False)
         self._stack.setCurrentIndex(2)
 
     def _go_workouts(self, payload: dict = None):
         self._btn_dash.setEnabled(True)
         self._btn_workouts.setEnabled(True)
         self._btn_statistics.setEnabled(True)
+        self._btn_gymai.setEnabled(True)
         self._workout_tab.reload()
         self._navigate(1)
 

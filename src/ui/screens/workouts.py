@@ -167,66 +167,148 @@ class WorkoutsTab(QWidget):
     # ------------------------------------------------------------------
 
     def _build_success_page(self) -> QWidget:
-        """Página de confirmação após criar um treino."""
+        """Página de confirmação após criar um treino - Visual Premium."""
+        from PySide6.QtWidgets import QGraphicsDropShadowEffect
+        from PySide6.QtGui import QColor
+        from PySide6.QtCore import QPropertyAnimation, QEasingCurve
+        
         page = QWidget()
-        page.setStyleSheet(f"background:{C_CARD};")
-        layout = QVBoxLayout(page)
-        layout.setContentsMargins(40, 60, 40, 40)
-        layout.setSpacing(24)
-        layout.setAlignment(Qt.AlignCenter)
+        page.setStyleSheet(f"background:{C_BG};")
+        
+        # Layout principal com stretches laterais para centralizar
+        main_layout = QHBoxLayout(page)
+        main_layout.setContentsMargins(40, 60, 40, 40)
+        main_layout.setSpacing(0)
+        
+        # Stretch esquerdo
+        main_layout.addStretch(1)
+        
+        # Container principal com largura máxima de 600px
+        self._success_container = QWidget()
+        self._success_container.setMaximumWidth(600)
+        self._success_container.setStyleSheet("QWidget { background: transparent; }")
+        
+        container_layout = QVBoxLayout(self._success_container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setSpacing(24)
+        container_layout.setAlignment(Qt.AlignTop | Qt.AlignHCenter)
 
-        # Ícone de sucesso
+        # Card Premium com fundo escuro e borda neon
+        success_card = QFrame()
+        success_card.setObjectName("success_card")
+        success_card.setStyleSheet("""
+            QFrame#success_card {
+                background: #1a1a1a;
+                border: 1px solid #b5ff00;
+                border-radius: 20px;
+                padding: 48px 40px;
+            }
+        """)
+        card_layout = QVBoxLayout(success_card)
+        card_layout.setSpacing(24)
+        card_layout.setAlignment(Qt.AlignCenter)
+
+        # Ícone de sucesso com efeito glow
         icon_label = QLabel("✓")
         icon_label.setStyleSheet(f"""
-            font-size: 80px;
+            font-size: 120px;
             color: {C_GREEN};
             font-weight: bold;
         """)
         icon_label.setAlignment(Qt.AlignCenter)
-        layout.addWidget(icon_label)
+        
+        # Adiciona efeito de brilho (glow) verde
+        glow_effect = QGraphicsDropShadowEffect()
+        glow_effect.setBlurRadius(40)
+        glow_effect.setColor(QColor(181, 255, 0, 200))
+        glow_effect.setOffset(0, 0)
+        icon_label.setGraphicsEffect(glow_effect)
+        
+        card_layout.addWidget(icon_label)
 
-        # Título
+        # Título "Treino Criado!"
         self._success_title = QLabel()
         self._success_title.setStyleSheet("""
-            font-size: 28px;
+            font-size: 32px;
             font-weight: 800;
             color: #fff;
+            margin-top: 8px;
         """)
         self._success_title.setAlignment(Qt.AlignCenter)
         self._success_title.setWordWrap(True)
-        layout.addWidget(self._success_title)
+        card_layout.addWidget(self._success_title)
 
-        # Card com detalhes do treino
-        details_card = QFrame()
-        details_card.setObjectName("card")
-        details_card.setStyleSheet(f"""
-            QFrame#card {{
-                background: {C_CARD};
+        # Nome do treino (destaque maior e negrito)
+        self._success_workout_name = QLabel()
+        self._success_workout_name.setStyleSheet(f"""
+            font-size: 28px;
+            font-weight: 700;
+            color: {C_GREEN};
+            margin: 8px 0;
+        """)
+        self._success_workout_name.setAlignment(Qt.AlignCenter)
+        self._success_workout_name.setWordWrap(True)
+        card_layout.addWidget(self._success_workout_name)
+
+        # Container horizontal para badges de estatísticas
+        badges_container = QWidget()
+        badges_container.setStyleSheet("background: transparent;")
+        badges_layout = QHBoxLayout(badges_container)
+        badges_layout.setContentsMargins(0, 16, 0, 0)
+        badges_layout.setSpacing(15)
+        badges_layout.setAlignment(Qt.AlignCenter)
+
+        # Badge 1: Exercícios (usando iniciais ao invés de emoji)
+        self._badge_exercises = self._create_stat_badge("EX", "0", "exercícios", is_text_icon=True)
+        badges_layout.addWidget(self._badge_exercises)
+
+        # Badge 2: Séries (usando iniciais ao invés de emoji)
+        self._badge_series = self._create_stat_badge("SR", "0", "séries", is_text_icon=True)
+        badges_layout.addWidget(self._badge_series)
+
+        # Badge 3: Dias (usando iniciais ao invés de emoji)
+        self._badge_days = self._create_stat_badge("DI", "", "", is_text_icon=True)
+        badges_layout.addWidget(self._badge_days)
+
+        card_layout.addWidget(badges_container)
+
+        container_layout.addWidget(success_card)
+
+        # Container de botões horizontais (mesma largura do card)
+        buttons_container = QWidget()
+        buttons_layout = QHBoxLayout(buttons_container)
+        buttons_layout.setSpacing(16)
+        buttons_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Botão "Voltar" - discreto com bordas
+        back_btn = QPushButton("← Voltar")
+        back_btn.setMinimumHeight(56)
+        back_btn.setMaximumWidth(180)
+        back_btn.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent;
+                color: {C_TEXT};
                 border: 1px solid {C_BORDER};
                 border-radius: {RADIUS_MD}px;
-                padding: 24px;
+                font-size: 15px;
+                font-weight: 600;
+                padding: 0 32px;
+            }}
+            QPushButton:hover {{
+                border-color: {C_TEXT};
+                color: #fff;
+            }}
+            QPushButton:pressed {{
+                background: rgba(255, 255, 255, 0.05);
             }}
         """)
-        details_layout = QVBoxLayout(details_card)
-        details_layout.setSpacing(16)
+        back_btn.clicked.connect(lambda: (self._stack.setCurrentIndex(0), self.reload()))
+        buttons_layout.addWidget(back_btn)
 
-        self._success_details = QLabel()
-        self._success_details.setStyleSheet(f"""
-            font-size: 16px;
-            color: {C_TEXT};
-            line-height: 1.6;
-        """)
-        self._success_details.setAlignment(Qt.AlignCenter)
-        self._success_details.setWordWrap(True)
-        details_layout.addWidget(self._success_details)
-
-        layout.addWidget(details_card)
-        layout.addStretch()
-
-        # Botão voltar
-        back_btn = QPushButton("← Voltar para Treinos")
-        back_btn.setMinimumHeight(56)
-        back_btn.setStyleSheet(f"""
+        # Botão "Iniciar Treino" - destaque verde neon
+        self._start_workout_btn = QPushButton("▶ Iniciar Treino")
+        self._start_workout_btn.setMinimumHeight(56)
+        self._start_workout_btn.setStyleSheet(f"""
             QPushButton {{
                 background: {C_GREEN};
                 color: #000;
@@ -234,7 +316,7 @@ class WorkoutsTab(QWidget):
                 border-radius: {RADIUS_MD}px;
                 font-size: 16px;
                 font-weight: 700;
-                padding: 0 24px;
+                padding: 0 32px;
             }}
             QPushButton:hover {{
                 background: #b5ff00;
@@ -243,10 +325,136 @@ class WorkoutsTab(QWidget):
                 background: #8ad900;
             }}
         """)
-        back_btn.clicked.connect(lambda: (self._stack.setCurrentIndex(0), self.reload()))
-        layout.addWidget(back_btn)
+        self._start_workout_btn.clicked.connect(self._start_created_workout)
+        buttons_layout.addWidget(self._start_workout_btn)
 
+        container_layout.addWidget(buttons_container)
+        
+        # Adiciona o container centralizado ao layout principal
+        main_layout.addWidget(self._success_container)
+        
+        # Stretch direito
+        main_layout.addStretch(1)
+        
         return page
+    
+    def _create_stat_badge(self, icon_text: str, value: str, label: str, is_text_icon: bool = False) -> QFrame:
+        """Cria um badge individual para estatísticas com design de pílula."""
+        
+        badge = QFrame()
+        badge.setObjectName("stat_badge")
+        badge.setStyleSheet("""
+            QFrame#stat_badge {
+                background-color: #1e1e1e;
+                border-radius: 12px;
+                padding: 12px;
+                min-width: 110px;
+            }
+        """)
+        
+        badge_layout = QVBoxLayout(badge)
+        badge_layout.setContentsMargins(12, 10, 12, 10)
+        badge_layout.setSpacing(6)
+        badge_layout.setAlignment(Qt.AlignCenter)
+        
+        # Ícone - usando texto estilizado ao invés de emoji
+        if is_text_icon:
+            icon_label = QLabel(icon_text)
+            icon_label.setStyleSheet(f"""
+                font-size: 16px;
+                font-weight: 800;
+                color: {C_GREEN};
+                background: transparent;
+                letter-spacing: 1px;
+            """)
+        else:
+            # Fallback para emoji (caso necessário no futuro)
+            import platform
+            system = platform.system()
+            if system == "Windows":
+                emoji_font = "Segoe UI Emoji"
+            elif system == "Darwin":  # macOS
+                emoji_font = "Apple Color Emoji"
+            else:  # Linux
+                emoji_font = "Noto Color Emoji"
+            
+            icon_label = QLabel(icon_text)
+            icon_label.setStyleSheet(f"""
+                font-size: 20px;
+                font-family: '{emoji_font}';
+                background: transparent;
+            """)
+        
+        icon_label.setAlignment(Qt.AlignCenter)
+        badge_layout.addWidget(icon_label)
+        
+        # Valor (número em verde neon e negrito) - AUMENTADO
+        value_label = QLabel(value)
+        value_label.setObjectName("badge_value")
+        value_label.setStyleSheet(f"""
+            QLabel#badge_value {{
+                font-size: 20px;
+                font-weight: 700;
+                color: {C_GREEN};
+                background: transparent;
+            }}
+        """)
+        value_label.setAlignment(Qt.AlignCenter)
+        badge_layout.addWidget(value_label)
+        
+        # Label (texto descritivo em branco) - AUMENTADO
+        desc_label = QLabel(label)
+        desc_label.setObjectName("badge_label")
+        desc_label.setStyleSheet("""
+            QLabel#badge_label {
+                font-size: 14px;
+                font-weight: 400;
+                color: #ffffff;
+                background: transparent;
+            }
+        """)
+        desc_label.setAlignment(Qt.AlignCenter)
+        badge_layout.addWidget(desc_label)
+        
+        # Armazena referências aos labels para atualização posterior
+        badge.value_label = value_label
+        badge.desc_label = desc_label
+        
+        return badge
+    
+    def _start_created_workout(self):
+        """Inicia o treino recém-criado."""
+        if hasattr(self, '_last_created_routine'):
+            self._on_start(self._last_created_routine)
+        else:
+            # Fallback: volta para a lista
+            self._stack.setCurrentIndex(0)
+            self.reload()
+    
+    def _animate_success_page(self):
+        """Animação de entrada (Fade In + Slide Up) para a página de sucesso."""
+        from PySide6.QtCore import QPropertyAnimation, QEasingCurve, QParallelAnimationGroup
+        
+        # Animação de opacidade (Fade In)
+        self._fade_animation = QPropertyAnimation(self._success_container, b"windowOpacity")
+        self._fade_animation.setDuration(600)
+        self._fade_animation.setStartValue(0.0)
+        self._fade_animation.setEndValue(1.0)
+        self._fade_animation.setEasingCurve(QEasingCurve.OutCubic)
+        
+        # Animação de posição (Slide Up)
+        self._slide_animation = QPropertyAnimation(self._success_container, b"pos")
+        self._slide_animation.setDuration(600)
+        start_pos = self._success_container.pos()
+        self._slide_animation.setStartValue(start_pos + self._success_container.rect().bottomLeft().__class__(0, 30))
+        self._slide_animation.setEndValue(start_pos)
+        self._slide_animation.setEasingCurve(QEasingCurve.OutCubic)
+        
+        # Grupo de animações paralelas
+        self._animation_group = QParallelAnimationGroup()
+        self._animation_group.addAnimation(self._fade_animation)
+        self._animation_group.addAnimation(self._slide_animation)
+        self._animation_group.start()
 
     # ------------------------------------------------------------------
     # Pesquisa
@@ -979,35 +1187,45 @@ class WorkoutsTab(QWidget):
             default_sets_list = [e["series_count"] for e in exercises]
             self._rm.create_routine(workout_name, ex_ids, default_sets_list)
             
+            # Busca a rotina recém-criada para poder iniciá-la depois
+            routines = self._rm.list_routines()
+            self._last_created_routine = next((r for r in routines if r.name == workout_name), None)
+            
             # Prepara dados para a tela de sucesso
             total_series = sum(e["series_count"] for e in exercises)
             
             # Atualiza os labels da página de sucesso
-            self._success_title.setText(f"Treino Criado!")
+            self._success_title.setText("Treino Criado!")
+            self._success_workout_name.setText(workout_name)
             
-            details_text = f"""
-                <div style='text-align: center;'>
-                    <p style='font-size: 20px; font-weight: 700; color: {C_GREEN}; margin-bottom: 16px;'>
-                        {workout_name}
-                    </p>
-                    <p style='margin: 8px 0;'>
-                        <span style='color: {C_TEXT2};'>📋</span> 
-                        <span style='font-weight: 600;'>{len(exercises)}</span> exercício(s)
-                    </p>
-                    <p style='margin: 8px 0;'>
-                        <span style='color: {C_TEXT2};'>🔢</span> 
-                        <span style='font-weight: 600;'>{total_series}</span> série(s) total
-                    </p>
-                    <p style='margin: 8px 0;'>
-                        <span style='color: {C_TEXT2};'>📅</span> 
-                        <span style='font-weight: 600;'>{days_str}</span>
-                    </p>
-                </div>
-            """
-            self._success_details.setText(details_text)
+            # Atualiza os badges de estatísticas
+            # Badge 1: Exercícios
+            self._badge_exercises.value_label.setText(str(len(exercises)))
+            self._badge_exercises.desc_label.setText("exercício" if len(exercises) == 1 else "exercícios")
             
-            # Mostra a página de sucesso
+            # Badge 2: Séries
+            self._badge_series.value_label.setText(str(total_series))
+            self._badge_series.desc_label.setText("série" if total_series == 1 else "séries")
+            
+            # Badge 3: Dias
+            if selected_days:
+                # Se houver apenas um dia, mostra o nome completo
+                if len(selected_days) == 1:
+                    self._badge_days.value_label.setText(selected_days[0])
+                    self._badge_days.desc_label.setText("")
+                else:
+                    # Se houver múltiplos dias, mostra a quantidade
+                    self._badge_days.value_label.setText(str(len(selected_days)))
+                    self._badge_days.desc_label.setText("dias")
+            else:
+                self._badge_days.value_label.setText("—")
+                self._badge_days.desc_label.setText("sem dias")
+            
+            # Mostra a página de sucesso com animação
             self._stack.setCurrentIndex(4)
+            
+            # Inicia a animação após um pequeno delay para garantir que a página foi renderizada
+            QTimer.singleShot(50, self._animate_success_page)
             
         except Exception as e:
             QMessageBox.critical(

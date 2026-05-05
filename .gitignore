@@ -51,6 +51,9 @@ env/
 htmlcov/
 .tox/
 
+# Environment variables
+.env
+
 # Project specific
 gymnight.db
 user_data.json
