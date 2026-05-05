@@ -7,7 +7,7 @@ from __future__ import annotations
 import os
 from typing import Optional
 
-from PySide6.QtCore import Qt, Signal, QThread
+from PySide6.QtCore import Qt, Signal, QThread, QTimer
 from PySide6.QtWidgets import (
     QFrame, QHBoxLayout, QLabel, QLineEdit, QPushButton,
     QScrollArea, QVBoxLayout, QWidget, QTextEdit,
@@ -19,6 +19,7 @@ from src.ui.theme import (
 )
 from src.ui.smooth_scroll import apply_smooth_scroll
 from loguru import logger
+import qtawesome as qta
 
 
 # ---------------------------------------------------------------------------
@@ -157,7 +158,7 @@ o uso consistente do app para tracking de progresso."""
 # ---------------------------------------------------------------------------
 
 class _MessageBubble(QFrame):
-    """Balão de mensagem estilizado."""
+    """Bolha de mensagem estilizada com suporte a Markdown."""
     
     def __init__(self, text: str, is_user: bool, parent=None):
         super().__init__(parent)
@@ -165,48 +166,68 @@ class _MessageBubble(QFrame):
         
         # Estilo do balão
         if is_user:
-            bg_color = C_GREEN
-            text_color = "#000000"
-            align = Qt.AlignRight
+            # Usuário: fundo verde neon, texto preto, alinhado à direita
+            self.setStyleSheet(f"""
+                QFrame {{
+                    background: {C_GREEN};
+                    border: none;
+                    border-radius: 15px;
+                    padding: 16px 20px;
+                }}
+            """)
         else:
-            bg_color = C_CARD
-            text_color = C_TEXT
-            align = Qt.AlignLeft
-        
-        self.setStyleSheet(f"""
-            QFrame {{
-                background: {bg_color};
-                border: 1px solid {C_BORDER};
-                border-radius: {RADIUS_MD}px;
-                padding: 12px 16px;
-            }}
-        """)
+            # IA: fundo escuro, borda lateral esquerda verde neon
+            self.setStyleSheet(f"""
+                QFrame {{
+                    background: #1e1e1e;
+                    border: none;
+                    border-left: 3px solid {C_GREEN};
+                    border-radius: 15px;
+                    padding: 16px 20px;
+                }}
+            """)
         
         # Layout
         lay = QVBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
-        lay.setSpacing(4)
+        lay.setSpacing(0)
         
-        # Label do texto
-        text_label = QLabel(text)
-        text_label.setWordWrap(True)
-        text_label.setTextFormat(Qt.RichText)
-        text_label.setStyleSheet(f"""
-            color: {text_color};
-            font-size: 14px;
-            background: transparent;
-            border: none;
-        """)
-        text_label.setAlignment(align | Qt.AlignTop)
-        lay.addWidget(text_label)
-        
-        # Efeito neon para mensagens do usuário
+        # Widget de texto com suporte a Markdown
         if is_user:
-            neon_glow(self, C_GREEN, blur=20, opacity=100)
+            # Para mensagens do usuário, usa QLabel simples
+            text_widget = QLabel(text)
+            text_widget.setWordWrap(True)
+            text_widget.setTextFormat(Qt.PlainText)
+            text_widget.setStyleSheet(f"""
+                color: #000000;
+                font-size: 14px;
+                background: transparent;
+                border: none;
+            """)
+            lay.addWidget(text_widget)
+        else:
+            # Para mensagens da IA, usa QLabel com MarkdownText
+            text_widget = QLabel(text)
+            text_widget.setWordWrap(True)
+            text_widget.setTextFormat(Qt.MarkdownText)
+            text_widget.setTextInteractionFlags(Qt.TextSelectableByMouse | Qt.LinksAccessibleByMouse)
+            text_widget.setStyleSheet(f"""
+                QLabel {{
+                    color: {C_TEXT};
+                    font-size: 14px;
+                    background: transparent;
+                    border: none;
+                }}
+            """)
+            lay.addWidget(text_widget)
+        
+        # Efeito neon sutil para mensagens do usuário
+        if is_user:
+            neon_glow(self, C_GREEN, blur=15, opacity=80)
 
 
 class _MessageContainer(QWidget):
-    """Container que alinha a mensagem à esquerda ou direita."""
+    """Container que alinha a mensagem à esquerda ou direita com largura máxima."""
     
     def __init__(self, bubble: _MessageBubble, is_user: bool, parent=None):
         super().__init__(parent)
@@ -214,6 +235,9 @@ class _MessageContainer(QWidget):
         lay = QHBoxLayout(self)
         lay.setContentsMargins(0, 0, 0, 0)
         lay.setSpacing(0)
+        
+        # Define largura máxima da bolha (70% da largura disponível)
+        bubble.setMaximumWidth(600)
         
         if is_user:
             lay.addStretch()
@@ -261,7 +285,12 @@ class GymAITab(QWidget):
         header = QHBoxLayout()
         header.setSpacing(12)
         
-        title = QLabel("🤖 GymAI")
+        # Ícone de robô usando qtawesome
+        icon_label = QLabel()
+        icon_label.setPixmap(qta.icon("fa5s.robot", color=C_GREEN).pixmap(32, 32))
+        header.addWidget(icon_label)
+        
+        title = QLabel("GymAI")
         title.setStyleSheet(f"""
             color: {C_TEXT};
             font-size: 28px;
@@ -310,7 +339,7 @@ class GymAITab(QWidget):
         self._messages_widget = QWidget()
         self._messages_widget.setStyleSheet("background: transparent;")
         self._messages_layout = QVBoxLayout(self._messages_widget)
-        self._messages_layout.setContentsMargins(20, 20, 20, 20)
+        self._messages_layout.setContentsMargins(24, 24, 24, 24)
         self._messages_layout.setSpacing(16)
         self._messages_layout.addStretch()
         
@@ -386,9 +415,10 @@ class GymAITab(QWidget):
     
     def _add_welcome_message(self):
         """Adiciona mensagem de boas-vindas."""
-        welcome_text = """Olá! 👋 Sou o <b>GymAI</b>, seu personal trainer virtual do GYMNight!
-        
+        welcome_text = """Olá! Sou o **GymAI**, seu personal trainer virtual do GYMNight!
+
 Estou aqui para ajudar com:
+
 • Dúvidas sobre exercícios e técnicas
 • Sugestões de treinos e progressões
 • Orientações sobre nutrição e recuperação
@@ -454,10 +484,13 @@ Pode perguntar qualquer coisa sobre treino! 💪"""
             container
         )
         
-        # Scroll para o final
-        self._scroll.verticalScrollBar().setValue(
-            self._scroll.verticalScrollBar().maximum()
-        )
+        # Scroll para o final com delay para garantir que o widget foi renderizado
+        QTimer.singleShot(100, self._scroll_to_bottom)
+    
+    def _scroll_to_bottom(self):
+        """Faz scroll automático para o final da conversa."""
+        scrollbar = self._scroll.verticalScrollBar()
+        scrollbar.setValue(scrollbar.maximum())
     
     def _on_response(self, response: str):
         """Callback quando a resposta da IA chega."""
@@ -476,14 +509,15 @@ Pode perguntar qualquer coisa sobre treino! 💪"""
     
     def _show_error(self, error_msg: str):
         """Mostra uma mensagem de erro."""
-        error_text = f"⚠️ <b>Erro:</b> {error_msg}"
+        error_text = f"**⚠️ Erro:** {error_msg}"
         bubble = _MessageBubble(error_text, is_user=False)
         bubble.setStyleSheet(f"""
             QFrame {{
                 background: #2a0a0a;
-                border: 1px solid #ef4444;
-                border-radius: {RADIUS_MD}px;
-                padding: 12px 16px;
+                border: none;
+                border-left: 3px solid #ef4444;
+                border-radius: 15px;
+                padding: 16px 20px;
             }}
         """)
         container = _MessageContainer(bubble, is_user=False)
@@ -492,6 +526,9 @@ Pode perguntar qualquer coisa sobre treino! 💪"""
             self._messages_layout.count() - 1, 
             container
         )
+        
+        # Scroll para o final
+        QTimer.singleShot(100, self._scroll_to_bottom)
     
     def _on_worker_finished(self):
         """Callback quando o worker termina."""
