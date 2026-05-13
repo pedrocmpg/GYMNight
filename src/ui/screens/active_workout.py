@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 from database import DatabaseConnection
 from engine import Exercise, NormalizationEngine, PerformanceAnalyzer, Routine, RoutineManager
 from src.ui.theme import (
-    C_BORDER, C_CARD, C_CARD2, C_GREEN, C_GREEN_BG,
+    C_BG, C_BORDER, C_CARD, C_CARD2, C_GREEN, C_GREEN_BG,
     C_TEXT, C_TEXT2, C_TEXT3, label, separator, neon_glow,
     RADIUS_SM, RADIUS_MD, RADIUS_LG,
 )
@@ -196,11 +196,11 @@ class ActiveWorkoutScreen(QWidget):
     def _add_exercise_dialog(self):
         """Abre diálogo para adicionar exercício avulso ao treino."""
         from src.ui.dialogs import ExerciseLineEdit, FramelessDialog
-        from PySide6.QtWidgets import QListWidget, QListWidgetItem
+        from PySide6.QtWidgets import QListWidget, QListWidgetItem, QSpinBox
         
         dlg = FramelessDialog("ADICIONAR EXERCÍCIO", self)
         dlg.setMinimumWidth(500)
-        dlg.setMaximumHeight(400)
+        dlg.setMaximumHeight(500)
         
         lay = dlg.content_layout()
         lay.addWidget(label("Buscar exercício", "h3"))
@@ -209,11 +209,22 @@ class ActiveWorkoutScreen(QWidget):
         search = QLineEdit()
         search.setPlaceholderText("Digite para buscar exercício...")
         search.setFixedHeight(44)
+        search.setStyleSheet(f"""
+            QLineEdit {{
+                background: {C_CARD2};
+                color: {C_TEXT};
+                border: 1px solid {C_BORDER};
+                border-radius: {RADIUS_MD}px;
+                padding: 10px 14px;
+                font-size: 14px;
+            }}
+            QLineEdit:focus {{ border-color: {C_GREEN}; }}
+        """)
         lay.addWidget(search)
         
         # Popup de resultados
         popup = QListWidget(dlg)
-        popup.setMaximumHeight(250)
+        popup.setMaximumHeight(200)
         popup.setStyleSheet(f"""
             QListWidget {{
                 background: #1e1e1e;
@@ -226,6 +237,51 @@ class ActiveWorkoutScreen(QWidget):
             QListWidget::item:selected {{ background: #1a2e1a; color: {C_GREEN}; }}
         """)
         lay.addWidget(popup)
+        
+        # Campo para número de séries
+        lay.addSpacing(16)
+        lay.addWidget(label("Número de séries", "h3"))
+        
+        series_spinbox = QSpinBox()
+        series_spinbox.setRange(1, 10)
+        series_spinbox.setValue(4)
+        series_spinbox.setFixedHeight(44)
+        series_spinbox.setStyleSheet(f"""
+            QSpinBox {{
+                background: {C_CARD2};
+                color: {C_TEXT};
+                border: 1px solid {C_BORDER};
+                border-radius: {RADIUS_MD}px;
+                padding: 10px 14px;
+                font-size: 14px;
+            }}
+            QSpinBox:focus {{ border-color: {C_GREEN}; }}
+            QSpinBox::up-button, QSpinBox::down-button {{
+                background: {C_GREEN};
+                border-radius: 4px;
+                width: 20px;
+            }}
+            QSpinBox::up-button:hover, QSpinBox::down-button:hover {{
+                background: #bef264;
+            }}
+            QSpinBox::up-arrow {{
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-bottom: 5px solid #000;
+                width: 0;
+                height: 0;
+            }}
+            QSpinBox::down-arrow {{
+                image: none;
+                border-left: 5px solid transparent;
+                border-right: 5px solid transparent;
+                border-top: 5px solid #000;
+                width: 0;
+                height: 0;
+            }}
+        """)
+        lay.addWidget(series_spinbox)
         
         selected_exercise = [None]  # Lista para capturar o exercício selecionado
         
@@ -279,28 +335,74 @@ class ActiveWorkoutScreen(QWidget):
         
         def on_item_clicked(item):
             selected_exercise[0] = item.data(Qt.UserRole)
-            dlg.accept()
         
         search.textChanged.connect(on_search_changed)
         popup.itemClicked.connect(on_item_clicked)
         
         # Botões
+        lay.addSpacing(16)
         btn_row = QHBoxLayout()
+        btn_row.setSpacing(12)
+        
         btn_cancel = QPushButton("Cancelar")
-        btn_cancel.setObjectName("ghost")
+        btn_cancel.setFixedHeight(44)
+        btn_cancel.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent;
+                color: {C_TEXT2};
+                border: 1px solid {C_BORDER};
+                border-radius: {RADIUS_MD}px;
+                font-size: 14px;
+                font-weight: 700;
+            }}
+            QPushButton:hover {{ 
+                background: rgba(255, 255, 255, 0.05);
+                border-color: {C_TEXT2};
+                color: {C_TEXT};
+            }}
+        """)
         btn_cancel.clicked.connect(dlg.reject)
         btn_row.addWidget(btn_cancel)
         
         btn_add = QPushButton(" Adicionar")
         btn_add.setIcon(qta.icon("fa5s.plus", color="#000000"))
-        btn_add.clicked.connect(lambda: dlg.accept() if popup.currentItem() else None)
+        btn_add.setFixedHeight(44)
+        btn_add.setStyleSheet(f"""
+            QPushButton {{
+                background: {C_GREEN};
+                color: #000;
+                border: none;
+                border-radius: {RADIUS_MD}px;
+                font-size: 14px;
+                font-weight: 700;
+            }}
+            QPushButton:hover {{ background: #bef264; }}
+        """)
+        
+        def on_add_clicked():
+            if selected_exercise[0]:
+                dlg.accept()
+            else:
+                # Mostra mensagem se nenhum exercício foi selecionado
+                search.setStyleSheet(f"""
+                    QLineEdit {{
+                        background: {C_CARD2};
+                        color: {C_TEXT};
+                        border: 2px solid #ef4444;
+                        border-radius: {RADIUS_MD}px;
+                        padding: 10px 14px;
+                        font-size: 14px;
+                    }}
+                """)
+        
+        btn_add.clicked.connect(on_add_clicked)
         btn_row.addWidget(btn_add)
         lay.addLayout(btn_row)
         
         if dlg.exec() == QDialog.Accepted and selected_exercise[0]:
-            self._add_exercise_to_workout(selected_exercise[0])
+            self._add_exercise_to_workout(selected_exercise[0], series_spinbox.value())
 
-    def _add_exercise_to_workout(self, exercise: Exercise):
+    def _add_exercise_to_workout(self, exercise: Exercise, num_sets: int = 4):
         """Adiciona um exercício avulso ao treino atual."""
         if not self._session_id:
             QMessageBox.warning(self, "Atenção", "Inicie um treino antes de adicionar exercícios.")
@@ -309,16 +411,17 @@ class ActiveWorkoutScreen(QWidget):
         # Adiciona o exercício à lista
         self._exercises.append(exercise)
         
-        # Adiciona séries padrão para o novo exercício
+        # Adiciona séries com o número especificado
         self._series_data.append([
             {"weight": "", "reps": "", "set_type": "N", "done": False, "saved": False}
-            for _ in range(4)
+            for _ in range(num_sets)
         ])
         
         # Reconstrói todos os cards
         self._build_all_exercises()
         
-        QMessageBox.information(self, "Sucesso", f"Exercício '{exercise.canonical_name.title()}' adicionado!")
+        # Atualiza o progresso
+        self._update_progress()
 
     # ------------------------------------------------------------------
     # Cardio
@@ -825,8 +928,102 @@ class ActiveWorkoutScreen(QWidget):
         self.finished.emit(self._finish_payload)
 
     def _confirm_back(self):
-        if QMessageBox.question(self, "Voltar", "Abandonar o treino atual?",
-                                QMessageBox.Yes | QMessageBox.No) == QMessageBox.Yes:
+        """Mostra overlay de confirmação para abandonar treino."""
+        # Cria overlay escuro que cobre toda a tela
+        overlay = QWidget(self)
+        overlay.setStyleSheet("background: rgba(0, 0, 0, 0.85);")
+        overlay.setGeometry(0, 0, self.width(), self.height())
+        overlay.raise_()  # Garante que o overlay fique no topo
+        
+        # Layout centralizado para o card
+        overlay_layout = QVBoxLayout(overlay)
+        overlay_layout.setAlignment(Qt.AlignCenter)
+        overlay_layout.setContentsMargins(40, 40, 40, 40)
+        
+        # Card de confirmação centralizado
+        card = QFrame()
+        card.setStyleSheet(f"""
+            QFrame {{
+                background: {C_CARD};
+                border: none;
+                border-radius: {RADIUS_LG}px;
+            }}
+        """)
+        card.setFixedSize(450, 220)
+        
+        card_lay = QVBoxLayout(card)
+        card_lay.setContentsMargins(32, 32, 32, 32)
+        card_lay.setSpacing(24)
+        
+        # Ícone e texto
+        icon_text_row = QHBoxLayout()
+        icon_text_row.setSpacing(16)
+        icon_text_row.setAlignment(Qt.AlignCenter)
+        
+        icon_lbl = QLabel()
+        icon_lbl.setPixmap(qta.icon("fa5s.question-circle", color=C_GREEN).pixmap(48, 48))
+        icon_lbl.setStyleSheet("border: none; background: transparent;")
+        icon_text_row.addWidget(icon_lbl)
+        
+        text_lbl = QLabel("Abandonar o treino atual?")
+        text_lbl.setWordWrap(True)
+        text_lbl.setStyleSheet(f"color: {C_TEXT}; font-size: 18px; font-weight: 700; border: none; background: transparent;")
+        icon_text_row.addWidget(text_lbl, 1)
+        
+        card_lay.addLayout(icon_text_row)
+        card_lay.addStretch()
+        
+        # Botões
+        btn_row = QHBoxLayout()
+        btn_row.setSpacing(12)
+        
+        btn_no = QPushButton("Não")
+        btn_no.setFixedHeight(48)
+        btn_no.setStyleSheet(f"""
+            QPushButton {{
+                background: transparent;
+                color: {C_TEXT2};
+                border: 1px solid {C_BORDER};
+                border-radius: {RADIUS_MD}px;
+                font-size: 14px;
+                font-weight: 700;
+            }}
+            QPushButton:hover {{ 
+                background: rgba(255, 255, 255, 0.05);
+                border-color: {C_TEXT2};
+                color: {C_TEXT};
+            }}
+        """)
+        btn_no.clicked.connect(overlay.deleteLater)
+        btn_row.addWidget(btn_no)
+        
+        btn_yes = QPushButton("Sim")
+        btn_yes.setFixedHeight(48)
+        btn_yes.setStyleSheet(f"""
+            QPushButton {{
+                background: {C_GREEN};
+                color: #000;
+                border: none;
+                border-radius: {RADIUS_MD}px;
+                font-size: 14px;
+                font-weight: 700;
+            }}
+            QPushButton:hover {{ background: #bef264; }}
+        """)
+        
+        def on_yes():
             self._session_id = None
             self._main_stack.setCurrentIndex(0)
             self.finished.emit({})
+            overlay.deleteLater()
+        
+        btn_yes.clicked.connect(on_yes)
+        btn_row.addWidget(btn_yes)
+        
+        card_lay.addLayout(btn_row)
+        
+        # Adiciona o card ao layout do overlay
+        overlay_layout.addWidget(card, alignment=Qt.AlignCenter)
+        
+        # Mostra o overlay
+        overlay.show()
