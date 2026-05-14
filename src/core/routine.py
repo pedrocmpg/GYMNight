@@ -108,13 +108,24 @@ class RoutineManager:
             for r in rows
         ]
 
-    def update_routine_template(self, routine_id: int, new_exercise_ids: list[int]) -> None:
-        """Substitui exercícios da rotina atomicamente (DELETE + INSERT)."""
+    def update_routine_template(self, routine_id: int, new_exercise_ids: list[int], default_sets_list: list[int] = None) -> None:
+        """
+        Substitui exercícios da rotina atomicamente (DELETE + INSERT).
+        
+        Args:
+            routine_id: ID da rotina
+            new_exercise_ids: Lista de IDs dos exercícios
+            default_sets_list: Lista com número de séries para cada exercício (opcional, padrão 3)
+        """
+        # Se não foi fornecido, usa 3 séries para todos
+        if default_sets_list is None:
+            default_sets_list = [3] * len(new_exercise_ids)
+            
         with self._db._conn:
             self._db._conn.execute("DELETE FROM routine_exercises WHERE routine_id = ?", (routine_id,))
             self._db._conn.executemany(
-                "INSERT INTO routine_exercises (routine_id, exercise_id, order_index) VALUES (?, ?, ?)",
-                [(routine_id, ex_id, idx) for idx, ex_id in enumerate(new_exercise_ids)],
+                "INSERT INTO routine_exercises (routine_id, exercise_id, order_index, default_sets) VALUES (?, ?, ?, ?)",
+                [(routine_id, ex_id, idx, default_sets_list[idx]) for idx, ex_id in enumerate(new_exercise_ids)],
             )
 
     def end_session(self, session_id: int) -> int:

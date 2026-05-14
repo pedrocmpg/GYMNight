@@ -30,7 +30,7 @@ def _norm(text: str) -> str:
     return "".join(c for c in nfd if unicodedata.category(c) != "Mn")
 
 
-def parse_cardio_types(md_path: str = "tipo_cardios.md") -> list[dict]:
+def parse_cardio_types(md_path: str = "docs/tipo_cardios.md") -> list[dict]:
     """
     Lê tipo_cardios.md e retorna lista de dicts:
     {name, intensity, pse_avg, description}

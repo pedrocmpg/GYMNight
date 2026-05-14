@@ -20,6 +20,7 @@ from src.ui.theme import (
 from src.ui.smooth_scroll import apply_smooth_scroll
 from loguru import logger
 import qtawesome as qta
+import time
 
 
 # ---------------------------------------------------------------------------
@@ -30,6 +31,7 @@ class GeminiWorker(QThread):
     """Thread worker para fazer requisições à API do Gemini."""
     
     response_ready = Signal(str)  # Emite a resposta da IA
+    response_word = Signal(str)  # Emite palavras individuais em tempo real
     error_occurred = Signal(str)  # Emite mensagens de erro
     
     def __init__(self, api_key: str, parent=None):
@@ -37,6 +39,7 @@ class GeminiWorker(QThread):
         self._api_key = api_key
         self._question = ""
         self._conversation_history = []
+        self._word_delay = 0.015  # Delay entre palavras em segundos (15ms)
         
     def set_question(self, question: str):
         """Define a pergunta a ser enviada."""
@@ -45,6 +48,17 @@ class GeminiWorker(QThread):
     def set_history(self, history: list):
         """Define o histórico da conversa."""
         self._conversation_history = history
+    
+    def _emit_text_by_words(self, text: str):
+        """Emite o texto palavra por palavra com delay."""
+        import re
+        # Divide mantendo espaços e quebras de linha
+        parts = re.split(r'(\s+)', text)
+        
+        for part in parts:
+            if part:  # Não emite strings vazias
+                self.response_word.emit(part)
+                time.sleep(self._word_delay)
     
     def run(self):
         """Executa a requisição à API do Gemini."""
@@ -98,9 +112,11 @@ o uso consistente do app para tracking de progresso."""
             last_error = None
             
             # Tenta cada modelo até conseguir uma resposta
+            full_response = ""
             for model_name in models_to_try:
                 try:
-                    response = client.models.generate_content(
+                    # Usa generate_content_stream para streaming
+                    response_stream = client.models.generate_content_stream(
                         model=model_name,
                         contents=contents,
                         config=types.GenerateContentConfig(
@@ -108,16 +124,25 @@ o uso consistente do app para tracking de progresso."""
                             temperature=0.7,
                         )
                     )
+                    
+                    # Processa cada chunk da resposta
+                    for chunk in response_stream:
+                        if chunk.text:
+                            full_response += chunk.text
+                            # Emite o texto palavra por palavra com delay
+                            self._emit_text_by_words(chunk.text)
+                    
                     # Se chegou aqui, funcionou
                     break
                 except Exception as e:
                     last_error = e
                     logger.warning(f"Modelo {model_name} falhou: {e}")
+                    full_response = ""  # Reseta para tentar próximo modelo
                     continue
             
             # Verifica se conseguiu resposta
-            if response and response.text:
-                self.response_ready.emit(response.text)
+            if full_response:
+                self.response_ready.emit(full_response)
             elif last_error:
                 # Se todos os modelos falharam, mostra o último erro
                 error_msg = str(last_error)
@@ -163,6 +188,7 @@ class _MessageBubble(QFrame):
     def __init__(self, text: str, is_user: bool, parent=None):
         super().__init__(parent)
         self._is_user = is_user
+        self._text_widget = None
         
         # Estilo do balão
         if is_user:
@@ -220,10 +246,16 @@ class _MessageBubble(QFrame):
                 }}
             """)
             lay.addWidget(text_widget)
+            self._text_widget = text_widget
         
         # Efeito neon sutil para mensagens do usuário
         if is_user:
             neon_glow(self, C_GREEN, blur=15, opacity=80)
+    
+    def update_text(self, text: str):
+        """Atualiza o texto da mensagem (usado para streaming)."""
+        if self._text_widget:
+            self._text_widget.setText(text)
 
 
 class _MessageContainer(QWidget):
@@ -265,6 +297,10 @@ class GymAITab(QWidget):
         
         # Worker thread
         self._worker: Optional[GeminiWorker] = None
+        
+        # Mensagem atual sendo digitada (para streaming)
+        self._current_ai_bubble: Optional[_MessageBubble] = None
+        self._current_ai_text = ""
         
         self._build()
         
@@ -464,10 +500,20 @@ Pode perguntar qualquer coisa sobre treino! 💪"""
             "content": question
         })
         
+        # Cria bolha vazia para a resposta da IA (será preenchida com streaming)
+        self._current_ai_text = ""
+        self._current_ai_bubble = _MessageBubble("", is_user=False)
+        container = _MessageContainer(self._current_ai_bubble, is_user=False)
+        self._messages_layout.insertWidget(
+            self._messages_layout.count() - 1, 
+            container
+        )
+        
         # Cria e inicia o worker
         self._worker = GeminiWorker(self._api_key)
         self._worker.set_question(question)
         self._worker.set_history(self._conversation_history[:-1])  # Histórico sem a última mensagem
+        self._worker.response_word.connect(self._on_response_word)
         self._worker.response_ready.connect(self._on_response)
         self._worker.error_occurred.connect(self._on_error)
         self._worker.finished.connect(self._on_worker_finished)
@@ -492,16 +538,29 @@ Pode perguntar qualquer coisa sobre treino! 💪"""
         scrollbar = self._scroll.verticalScrollBar()
         scrollbar.setValue(scrollbar.maximum())
     
+    def _on_response_word(self, word: str):
+        """Callback quando uma palavra da resposta chega (streaming palavra por palavra)."""
+        # Acumula o texto
+        self._current_ai_text += word
+        
+        # Atualiza a bolha com o texto acumulado
+        if self._current_ai_bubble:
+            self._current_ai_bubble.update_text(self._current_ai_text)
+            
+            # Scroll para o final a cada algumas palavras para suavidade
+            QTimer.singleShot(10, self._scroll_to_bottom)
+    
     def _on_response(self, response: str):
-        """Callback quando a resposta da IA chega."""
+        """Callback quando a resposta completa da IA chega."""
         # Adiciona ao histórico
         self._conversation_history.append({
             "role": "assistant",
             "content": response
         })
         
-        # Adiciona mensagem da IA
-        self._add_message(response, is_user=False)
+        # Limpa referências da mensagem atual
+        self._current_ai_bubble = None
+        self._current_ai_text = ""
     
     def _on_error(self, error_msg: str):
         """Callback quando ocorre um erro."""
