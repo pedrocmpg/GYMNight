@@ -25,50 +25,6 @@ A maioria dos aplicativos de fitness está repleta de recursos sociais e interfa
 * **Banco de Dados:** SQLite
 * **Arquitetura:** Lógica limpa e relacionamentos de dados eficientes
 
-## 🚀 Como Executar
-
-### Instalação
-```bash
-# Clone o repositório
-git clone <seu-repositorio>
-cd GYMNight
-
-# Crie e ative o ambiente virtual
-python -m venv .venv
-source .venv/bin/activate  # Linux/WSL
-# ou
-.venv\Scripts\activate     # Windows
-
-# Instale as dependências
-pip install -r requirements.txt
-```
-
-### Execução
-
-**Linux/WSL (recomendado):**
-```bash
-cd ~/Projetos/GYMNight
-source .venv/bin/activate
-python main.py
-
-# Ou use o script
-./run.sh
-```
-
-**Windows nativo:**
-```powershell
-# PowerShell
-.\run.ps1
-
-# Ou CMD
-.\run.bat
-```
-
-> **Nota:** Os avisos "Could not parse stylesheet" são normais e não afetam o funcionamento.
-
-> **Veja mais detalhes:** [COMO_EXECUTAR.md](COMO_EXECUTAR.md)
-
-
 ## 📊 Funcionalidades Detalhadas
 
 ### Gerenciamento de Treinos
@@ -86,10 +42,6 @@ python main.py
 - Fórmula: Calorias = (MET × Peso_kg × Tempo_min) / 60
 - Tempo por repetição: 4 segundos
 
-
-
-## 📝 Licença
-Este projeto está licenciado sob a licença MIT - veja o arquivo [LICENSE](LICENSE) para detalhes.
 
 ## 📧 Contato
 Este é um projeto pessoal. Para dúvidas, consulte a documentação disponível.
