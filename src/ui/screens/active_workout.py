@@ -18,7 +18,7 @@ from src.ui.theme import (
     C_TEXT, C_TEXT2, C_TEXT3, label, separator, neon_glow,
     RADIUS_SM, RADIUS_MD, RADIUS_LG,
 )
-from src.ui.screens.cardio_widget import CardioPickerDialog, CardioRow
+from src.ui.screens.cardio_widget import CardioPickerDialog, CardioRow, CardioPage
 from src.ui.widgets.set_indicator import SetIndicatorWidget
 from src.ui.widgets.muscle_heatmap import MuscleHeatmapWidget
 from src.ui_models.models import SET_TYPES
@@ -53,6 +53,16 @@ class ActiveWorkoutScreen(QWidget):
         root.addWidget(self._main_stack)
 
         # ── Página 0: tela de treino ──────────────────────────────────────
+        workout_page = self._build_workout_page()
+        self._main_stack.addWidget(workout_page)  # index 0
+
+        # ── Página 1: tela de resumo (finalizar treino) ───────────────────
+        self._main_stack.addWidget(self._build_summary_page())  # index 1
+        
+        # ── Página 2: tela de adicionar cardio ────────────────────────────
+        self._cardio_page = None  # Será criado quando necessário
+
+    def _build_workout_page(self):
         workout_page = QWidget()
         workout_root = QVBoxLayout(workout_page)
         workout_root.setContentsMargins(0, 0, 0, 0)
@@ -184,10 +194,7 @@ class ActiveWorkoutScreen(QWidget):
         nav.addWidget(self._finish_btn)
         workout_root.addWidget(nav_w)
 
-        self._main_stack.addWidget(workout_page)  # index 0
-
-        # ── Página 1: tela de resumo (finalizar treino) ───────────────────
-        self._main_stack.addWidget(self._build_summary_page())  # index 1
+        return workout_page  # Retorna o widget ao invés de adicionar ao stack aqui
 
     # ------------------------------------------------------------------
     # Adicionar exercício avulso
@@ -428,17 +435,40 @@ class ActiveWorkoutScreen(QWidget):
     # ------------------------------------------------------------------
 
     def _add_cardio(self):
-        dlg = CardioPickerDialog(parent=self)
-        if dlg.exec() != QDialog.Accepted:
-            return
-        data = dlg.get_data()
-        if not data:
-            return
+        """Navega para a página de adicionar cardio."""
+        # Busca peso do usuário do user_data.json
+        user_weight = 75.0  # padrão
+        try:
+            import json
+            from pathlib import Path
+            user_data_path = Path("user_data.json")
+            if user_data_path.exists():
+                with open(user_data_path, "r", encoding="utf-8") as f:
+                    user_data = json.load(f)
+                    user_weight = float(user_data.get("weight", 75.0))
+        except:
+            pass
+        
+        # Cria a página de cardio se ainda não existe
+        if self._cardio_page is None:
+            self._cardio_page = CardioPage(user_weight_kg=user_weight)
+            self._cardio_page.cardio_added.connect(self._on_cardio_added)
+            self._cardio_page.cancelled.connect(lambda: self._main_stack.setCurrentIndex(0))
+            self._main_stack.addWidget(self._cardio_page)  # index 2
+        
+        # Navega para a página de cardio
+        self._main_stack.setCurrentIndex(2)
+
+    def _on_cardio_added(self, data: dict):
+        """Chamado quando um cardio é adicionado na CardioPage."""
         row = CardioRow(data, parent=None)
         row.remove_requested.connect(self._remove_cardio)
         self._cardio_rows.append(row)
         self._cardio_container.addWidget(row)
         self._no_cardio_lbl.setVisible(len(self._cardio_rows) == 0)
+        
+        # Volta para a página de treino
+        self._main_stack.setCurrentIndex(0)
 
     def _remove_cardio(self, row: CardioRow):
         if row in self._cardio_rows:
