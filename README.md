@@ -11,7 +11,8 @@
 ---
 
 ## 📸 Preview
-*Insert a dark/neon screenshot of your desktop application interface here!*
+
+<img width="1600" height="900" alt="image" src="https://github.com/user-attachments/assets/1f2c95d8-2e3c-47d8-87ab-31fc5938a8ec" />
 
 ---
 
